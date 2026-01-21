@@ -179,10 +179,23 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
 
   Serial.printf("[%lu] [SLP] drawing to %d x %d\n", millis(), x, y);
   renderer.clearScreen();
+
+  const bool hasGreyscale =
+      bitmap.hasGreyscale() &&
+      SETTINGS.sleepScreenCoverFilter != CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::BLACK_AND_WHITE &&
+      SETTINGS.sleepScreenCoverFilter != CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE;
+
   renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+
+  if (SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED ||
+      SETTINGS.sleepScreenCoverFilter ==
+          CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE) {
+    renderer.invertScreen();
+  }
+
   renderer.displayBuffer(EInkDisplay::HALF_REFRESH);
 
-  if (bitmap.hasGreyscale()) {
+  if (hasGreyscale) {
     bitmap.rewindToData();
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
@@ -194,6 +207,10 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
     renderer.copyGrayscaleMsbBuffers();
+
+    if (SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED) {
+      renderer.grayscaleRevert();
+    }
 
     renderer.displayGrayBuffer();
     renderer.setRenderMode(GfxRenderer::BW);
