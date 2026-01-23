@@ -14,15 +14,10 @@ constexpr int MAX_RECENT_BOOKS = 10;
 
 RecentBooksStore RecentBooksStore::instance;
 
-void RecentBooksStore::addBook(
-    const std::string& path,
-    const std::string& title,
-    const std::string& author) {
+void RecentBooksStore::addBook(const std::string& path, const std::string& title, const std::string& author) {
   // Remove existing entry if present
-  auto it = std::find_if(
-      recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) {
-        return book.path == path;
-      });
+  auto it =
+      std::find_if(recentBooks.begin(), recentBooks.end(), [&](const RecentBook& book) { return book.path == path; });
   if (it != recentBooks.end()) {
     recentBooks.erase(it);
   }
@@ -58,10 +53,7 @@ bool RecentBooksStore::saveToFile() const {
   }
 
   outputFile.close();
-  Serial.printf(
-      "[%lu] [RBS] Recent books saved to file (%d entries)\n",
-      millis(),
-      count);
+  Serial.printf("[%lu] [RBS] Recent books saved to file (%d entries)\n", millis(), count);
   return true;
 }
 
@@ -88,10 +80,7 @@ bool RecentBooksStore::loadFromFile() {
         recentBooks.push_back({path, "", ""});
       }
     } else {
-      Serial.printf(
-          "[%lu] [RBS] Deserialization failed: Unknown version %u\n",
-          millis(),
-          version);
+      Serial.printf("[%lu] [RBS] Deserialization failed: Unknown version %u\n", millis(), version);
       inputFile.close();
       return false;
     }
@@ -112,9 +101,6 @@ bool RecentBooksStore::loadFromFile() {
   }
 
   inputFile.close();
-  Serial.printf(
-      "[%lu] [RBS] Recent books loaded from file (%d entries)\n",
-      millis(),
-      recentBooks.size());
+  Serial.printf("[%lu] [RBS] Recent books loaded from file (%d entries)\n", millis(), recentBooks.size());
   return true;
 }

@@ -16,7 +16,7 @@ namespace {
 constexpr int TAB_BAR_Y = 15;
 constexpr int CONTENT_START_Y = 60;
 constexpr int LINE_HEIGHT = 30;
-constexpr int RECENTS_LINE_HEIGHT = 65; // Increased for two-line items
+constexpr int RECENTS_LINE_HEIGHT = 65;  // Increased for two-line items
 constexpr int LEFT_MARGIN = 20;
 constexpr int RIGHT_MARGIN = 40;  // Extra space for scroll indicator
 
@@ -323,8 +323,8 @@ void MyLibraryActivity::renderRecentTab() const {
   const auto pageStartIndex = selectorIndex / pageItems * pageItems;
 
   // Draw selection highlight
-  renderer.fillRect(0, CONTENT_START_Y + (selectorIndex % pageItems) * RECENTS_LINE_HEIGHT - 2, pageWidth - RIGHT_MARGIN,
-                    RECENTS_LINE_HEIGHT);
+  renderer.fillRect(0, CONTENT_START_Y + (selectorIndex % pageItems) * RECENTS_LINE_HEIGHT - 2,
+                    pageWidth - RIGHT_MARGIN, RECENTS_LINE_HEIGHT);
 
   // Draw items
   for (int i = pageStartIndex; i < bookCount && i < pageStartIndex + pageItems; i++) {
@@ -346,7 +346,7 @@ void MyLibraryActivity::renderRecentTab() const {
       }
     }
     auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title.c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
-    renderer.drawText(UI_12_FONT_ID, LEFT_MARGIN, y + 3, truncatedTitle.c_str(), i != selectorIndex);
+    renderer.drawText(UI_12_FONT_ID, LEFT_MARGIN, y + 2, truncatedTitle.c_str(), i != selectorIndex);
 
     // Line 2: Author
     if (!book.author.empty()) {
