@@ -55,11 +55,17 @@ const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Action("KOReader Sync"), SettingInfo::Action("OPDS Browser"), SettingInfo::Action("Clear Cache"),
     SettingInfo::Action("Check for updates")};
 
+<<<<<<< HEAD
 constexpr int filesSettingsCount = 2;
 const SettingInfo filesSettings[filesSettingsCount] = {
     SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions),
     SettingInfo::Enum("Recents View Mode", &CrossPointSettings::recentsViewMode,
                       {"File List", "Book Data", "Book Cover List", "Book Cover Grid"})};
+=======
+constexpr int filesSettingsCount = 1;
+const SettingInfo filesSettings[filesSettingsCount] = {
+    SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions)};
+>>>>>>> 54af1ae (Add hide extension option)
 }  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {

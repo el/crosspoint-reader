@@ -13,6 +13,7 @@
 #include "ScreenComponents.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
+#include "CrossPointSettings.h"
 
 namespace {
 // Layout constants
