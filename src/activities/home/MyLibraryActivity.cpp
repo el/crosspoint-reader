@@ -2,15 +2,17 @@
 
 #include <GfxRenderer.h>
 #include <SDCardManager.h>
-
+#include <Bitmap.h>
+#include <Epub.h>
+#include <Xtc.h>
 #include <algorithm>
 
+#include "CrossPointSettings.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "ScreenComponents.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
-#include "CrossPointSettings.h"
 
 namespace {
 // Layout constants
@@ -40,7 +42,28 @@ int MyLibraryActivity::getPageItems() const {
   const int screenHeight = renderer.getScreenHeight();
   const int bottomBarHeight = 60;  // Space for button hints
   const int availableHeight = screenHeight - CONTENT_START_Y - bottomBarHeight;
-  int items = availableHeight / LINE_HEIGHT;
+
+  int items = 1;  // Default to at least 1
+  if (currentTab == Tab::Recent) {
+    switch (SETTINGS.recentsViewMode) {
+      case CrossPointSettings::RECENTS_VIEW_MODE::FILE_LIST:
+        items = availableHeight / LINE_HEIGHT;
+        break;
+      case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_DATA:
+        items = availableHeight / RECENTS_LINE_HEIGHT;
+        break;
+      case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_COVER_LIST:
+        items = availableHeight / 140;
+        break;
+      case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_COVER_GRID:
+        // 3x3 grid, so 9 items per page
+        items = 9;
+        break;
+    }
+  } else {
+    items = availableHeight / LINE_HEIGHT;
+  }
+
   if (items < 1) {
     items = 1;
   }
@@ -312,6 +335,60 @@ void MyLibraryActivity::render() const {
 }
 
 void MyLibraryActivity::renderRecentTab() const {
+  switch (SETTINGS.recentsViewMode) {
+    case CrossPointSettings::RECENTS_VIEW_MODE::FILE_LIST:
+      renderRecentAsFileList();
+      break;
+    case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_DATA:
+      renderRecentAsBookData();
+      break;
+    case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_COVER_LIST:
+      renderRecentAsBookCoverList();
+      break;
+    case CrossPointSettings::RECENTS_VIEW_MODE::BOOK_COVER_GRID:
+      renderRecentAsBookCoverGrid();
+      break;
+  }
+}
+
+void MyLibraryActivity::renderRecentAsFileList() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const int pageItems = getPageItems();
+  const int bookCount = static_cast<int>(recentBooks.size());
+
+  if (bookCount == 0) {
+    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, "No recent books");
+    return;
+  }
+
+  const auto pageStartIndex = selectorIndex / pageItems * pageItems;
+
+  // Draw selection highlight
+  renderer.fillRect(0, CONTENT_START_Y + (selectorIndex % pageItems) * LINE_HEIGHT - 2, pageWidth - RIGHT_MARGIN,
+                    LINE_HEIGHT);
+
+  // Draw items
+  for (int i = pageStartIndex; i < bookCount && i < pageStartIndex + pageItems; i++) {
+    const auto& book = recentBooks[i];
+    std::string title = book.title;
+    if (title.empty()) {
+      // Fallback for older entries or files without metadata
+      title = book.path;
+      const size_t lastSlash = title.find_last_of('/');
+      if (lastSlash != std::string::npos) {
+        title = title.substr(lastSlash + 1);
+      }
+    }
+    if (SETTINGS.displayFileExtensions == 0) {
+      title = StringUtils::stripFileExtension(title);
+    }
+    auto item = renderer.truncatedText(UI_10_FONT_ID, title.c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
+    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
+                      i != selectorIndex);
+  }
+}
+
+void MyLibraryActivity::renderRecentAsBookData() const {
   const auto pageWidth = renderer.getScreenWidth();
   const int pageItems = getPageItems();
   const int bookCount = static_cast<int>(recentBooks.size());
@@ -357,6 +434,160 @@ void MyLibraryActivity::renderRecentTab() const {
     }
   }
 }
+
+void MyLibraryActivity::renderRecentAsBookCoverList() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const int pageItems = getPageItems();
+  const int bookCount = static_cast<int>(recentBooks.size());
+
+  if (bookCount == 0) {
+    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, "No recent books");
+    return;
+  }
+
+  const auto pageStartIndex = selectorIndex / pageItems * pageItems;
+  constexpr int itemHeight = 140;
+  constexpr int coverWidth = 100;
+  constexpr int textX = LEFT_MARGIN + coverWidth + 10;
+  const int textWidth = pageWidth - textX - RIGHT_MARGIN;
+
+  // Draw selection highlight
+  renderer.fillRect(0, CONTENT_START_Y + (selectorIndex % pageItems) * itemHeight - 2, pageWidth - RIGHT_MARGIN,
+                    itemHeight);
+
+  // Draw items
+  for (int i = pageStartIndex; i < bookCount && i < pageStartIndex + pageItems; i++) {
+    const auto& book = recentBooks[i];
+    const int y = CONTENT_START_Y + (i % pageItems) * itemHeight;
+
+    // --- Draw cover image ---
+    std::string coverBmpPath;
+    bool hasCoverImage = false;
+
+    if (StringUtils::checkFileExtension(book.path, ".epub")) {
+      Epub epub(book.path, "/.crosspoint");
+      if (epub.load(false) && epub.generateThumbBmp()) {
+        coverBmpPath = epub.getThumbBmpPath();
+        hasCoverImage = true;
+      }
+    } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
+               StringUtils::checkFileExtension(book.path, ".xtc")) {
+      Xtc xtc(book.path, "/.crosspoint");
+      if (xtc.load() && xtc.generateThumbBmp()) {
+        coverBmpPath = xtc.getThumbBmpPath();
+        hasCoverImage = true;
+      }
+    }
+
+    if (hasCoverImage && !coverBmpPath.empty()) {
+      FsFile file;
+      if (SdMan.openFileForRead("MYLIB", coverBmpPath, file)) {
+        Bitmap bitmap(file);
+        if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+          renderer.drawBitmap(bitmap, LEFT_MARGIN, y, coverWidth, itemHeight - 10);
+        }
+        file.close();
+      }
+    } else {
+      // Draw a placeholder if no cover
+      renderer.drawRect(LEFT_MARGIN, y, coverWidth, itemHeight - 10);
+      renderer.drawCenteredText(UI_10_FONT_ID, y + (itemHeight - 10) / 2 - 10, "No cover", false,
+                                LEFT_MARGIN, coverWidth);
+    }
+
+    // --- Draw text ---
+    // Line 1: Title
+    std::string title = book.title;
+    if (title.empty()) {
+      title = book.path;
+      const size_t lastSlash = title.find_last_of('/');
+      if (lastSlash != std::string::npos) {
+        title = title.substr(lastSlash + 1);
+      }
+      const size_t dot = title.find_last_of('.');
+      if (dot != std::string::npos) {
+        title.resize(dot);
+      }
+    }
+    auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title.c_str(), textWidth);
+    renderer.drawText(UI_12_FONT_ID, textX, y + 20, truncatedTitle.c_str(), i != selectorIndex);
+
+    // Line 2: Author
+    if (!book.author.empty()) {
+      auto truncatedAuthor = renderer.truncatedText(UI_10_FONT_ID, book.author.c_str(), textWidth);
+      renderer.drawText(UI_10_FONT_ID, textX, y + 60, truncatedAuthor.c_str(), i != selectorIndex);
+    }
+  }
+}
+
+void MyLibraryActivity::renderRecentAsBookCoverGrid() const {
+  const auto pageWidth = renderer.getScreenWidth();
+  const int pageItems = getPageItems();
+  const int bookCount = static_cast<int>(recentBooks.size());
+
+  if (bookCount == 0) {
+    renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y, "No recent books");
+    return;
+  }
+
+  const auto pageStartIndex = selectorIndex / pageItems * pageItems;
+
+  constexpr int cols = 3;
+  const int gridMargin = 10;
+  const int itemWidth = (pageWidth - (cols + 1) * gridMargin) / cols;
+  const int itemHeight = (renderer.getScreenHeight() - CONTENT_START_Y - 60 - 2 * gridMargin) / 3;
+
+  // Draw items
+  for (int i = pageStartIndex; i < bookCount && i < pageStartIndex + pageItems; i++) {
+    const auto& book = recentBooks[i];
+    const int row = (i % pageItems) / cols;
+    const int col = (i % pageItems) % cols;
+
+    const int x = gridMargin + col * (itemWidth + gridMargin);
+    const int y = CONTENT_START_Y + row * (itemHeight + gridMargin);
+
+    // --- Draw cover image ---
+    std::string coverBmpPath;
+    bool hasCoverImage = false;
+
+    if (StringUtils::checkFileExtension(book.path, ".epub")) {
+      Epub epub(book.path, "/.crosspoint");
+      if (epub.load(false) && epub.generateThumbBmp()) {
+        coverBmpPath = epub.getThumbBmpPath();
+        hasCoverImage = true;
+      }
+    } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
+               StringUtils::checkFileExtension(book.path, ".xtc")) {
+      Xtc xtc(book.path, "/.crosspoint");
+      if (xtc.load() && xtc.generateThumbBmp()) {
+        coverBmpPath = xtc.getThumbBmpPath();
+        hasCoverImage = true;
+      }
+    }
+
+    if (hasCoverImage && !coverBmpPath.empty()) {
+      FsFile file;
+      if (SdMan.openFileForRead("MYLIB", coverBmpPath, file)) {
+        Bitmap bitmap(file);
+        if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+          renderer.drawBitmap(bitmap, x, y, itemWidth, itemHeight);
+        }
+        file.close();
+      }
+    } else {
+      // Draw a placeholder if no cover
+      renderer.drawRect(x, y, itemWidth, itemHeight);
+      renderer.drawCenteredText(UI_10_FONT_ID, y + itemHeight / 2 - 10, "No cover", false, x, itemWidth);
+    }
+
+    // --- Draw selection highlight ---
+    if (i == selectorIndex) {
+      renderer.drawRect(x - 2, y - 2, itemWidth + 4, itemHeight + 4);
+      renderer.drawRect(x - 3, y - 3, itemWidth + 6, itemHeight + 6);
+    }
+  }
+}
+
 
 void MyLibraryActivity::renderFilesTab() const {
   const auto pageWidth = renderer.getScreenWidth();

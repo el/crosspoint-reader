@@ -49,6 +49,10 @@ class MyLibraryActivity final : public Activity {
   [[noreturn]] void displayTaskLoop();
   void render() const;
   void renderRecentTab() const;
+  void renderRecentAsFileList() const;
+  void renderRecentAsBookData() const;
+  void renderRecentAsBookCoverList() const;
+  void renderRecentAsBookCoverGrid() const;
   void renderFilesTab() const;
 
  public:

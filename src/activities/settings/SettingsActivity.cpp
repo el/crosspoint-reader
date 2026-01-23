@@ -51,9 +51,11 @@ const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Action("KOReader Sync"), SettingInfo::Action("Calibre Settings"), SettingInfo::Action("Clear Cache"),
     SettingInfo::Action("Check for updates")};
 
-constexpr int filesSettingsCount = 1;
+constexpr int filesSettingsCount = 2;
 const SettingInfo filesSettings[filesSettingsCount] = {
-    SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions)};
+    SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions),
+    SettingInfo::Enum("Recents View Mode", &CrossPointSettings::recentsViewMode,
+                      {"File List", "Book Data", "Book Cover List", "Book Cover Grid"})};
 }  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {

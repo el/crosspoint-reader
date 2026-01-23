@@ -97,6 +97,9 @@ class CrossPointSettings {
   // Display file extensions in the file browser
   uint8_t displayFileExtensions = 0;
 
+  enum RECENTS_VIEW_MODE { FILE_LIST = 0, BOOK_DATA = 1, BOOK_COVER_LIST = 2, BOOK_COVER_GRID = 3 };
+  uint8_t recentsViewMode = BOOK_DATA;
+
   ~CrossPointSettings() = default;
 
   // Get singleton instance
