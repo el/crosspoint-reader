@@ -25,4 +25,10 @@ size_t utf8RemoveLastChar(std::string& str);
 
 // Truncate string by removing N UTF-8 characters from the end
 void utf8TruncateChars(std::string& str, size_t numChars);
+
+/**
+ * Strip the file extension from a filename.
+ * If there's no extension, it returns the original filename.
+ */
+std::string stripFileExtension(const std::string& filename);
 }  // namespace StringUtils

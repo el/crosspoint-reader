@@ -80,4 +80,12 @@ void utf8TruncateChars(std::string& str, const size_t numChars) {
   }
 }
 
+std::string stripFileExtension(const std::string& filename) {
+  size_t last_dot = filename.find_last_of(".");
+  if (last_dot == std::string::npos) {
+    return filename;
+  }
+  return filename.substr(0, last_dot);
+}
+
 }  // namespace StringUtils

@@ -10,6 +10,7 @@
 #include "ScreenComponents.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
+#include "CrossPointSettings.h"
 
 namespace {
 // Layout constants
@@ -375,7 +376,11 @@ void MyLibraryActivity::renderFilesTab() const {
 
   // Draw items
   for (int i = pageStartIndex; i < fileCount && i < pageStartIndex + pageItems; i++) {
-    auto item = renderer.truncatedText(UI_10_FONT_ID, files[i].c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
+    std::string filename = files[i];
+    if (SETTINGS.displayFileExtensions == 0 && filename.back() != '/') {
+      filename = StringUtils::stripFileExtension(filename);
+    }
+    auto item = renderer.truncatedText(UI_10_FONT_ID, filename.c_str(), pageWidth - LEFT_MARGIN - RIGHT_MARGIN);
     renderer.drawText(UI_10_FONT_ID, LEFT_MARGIN, CONTENT_START_Y + (i % pageItems) * LINE_HEIGHT, item.c_str(),
                       i != selectorIndex);
   }

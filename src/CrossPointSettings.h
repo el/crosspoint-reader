@@ -94,6 +94,8 @@ class CrossPointSettings {
   uint8_t hideBatteryPercentage = HIDE_NEVER;
   // Long-press chapter skip on side buttons
   uint8_t longPressChapterSkip = 1;
+  // Display file extensions in the file browser
+  uint8_t displayFileExtensions = 0;
 
   ~CrossPointSettings() = default;
 

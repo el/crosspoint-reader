@@ -8,7 +8,7 @@
 #include "MappedInputManager.h"
 #include "fontIds.h"
 
-const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "System"};
+const char* SettingsActivity::categoryNames[categoryCount] = {"Display", "Reader", "Controls", "Files", "System"};
 
 namespace {
 constexpr int displaySettingsCount = 5;
@@ -50,6 +50,10 @@ const SettingInfo systemSettings[systemSettingsCount] = {
                       {"1 min", "5 min", "10 min", "15 min", "30 min"}),
     SettingInfo::Action("KOReader Sync"), SettingInfo::Action("Calibre Settings"), SettingInfo::Action("Clear Cache"),
     SettingInfo::Action("Check for updates")};
+
+constexpr int filesSettingsCount = 1;
+const SettingInfo filesSettings[filesSettingsCount] = {
+    SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions)};
 }  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {
@@ -144,7 +148,11 @@ void SettingsActivity::enterCategory(int categoryIndex) {
       settingsList = controlsSettings;
       settingsCount = controlsSettingsCount;
       break;
-    case 3:  // System
+    case 3:  // Files
+      settingsList = filesSettings;
+      settingsCount = filesSettingsCount;
+      break;
+    case 4:  // System
       settingsList = systemSettings;
       settingsCount = systemSettingsCount;
       break;

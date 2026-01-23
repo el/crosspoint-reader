@@ -19,7 +19,7 @@ class SettingsActivity final : public ActivityWithSubactivity {
   int selectedCategoryIndex = 0;  // Currently selected category
   const std::function<void()> onGoHome;
 
-  static constexpr int categoryCount = 4;
+  static constexpr int categoryCount = 5;
   static const char* categoryNames[categoryCount];
 
   static void taskTrampoline(void* param);
