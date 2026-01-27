@@ -64,6 +64,7 @@ bool CrossPointSettings::saveToFile() const {
   serialization::writeString(outputFile, std::string(opdsPassword));
   // New fields added at end for backward compatibility
   serialization::writePod(outputFile, displayFileExtensions);
+  serialization::writePod(outputFile, recentsViewMode);
   outputFile.close();
 
   Serial.printf("[%lu] [CPS] Settings saved to file\n", millis());
@@ -157,6 +158,8 @@ bool CrossPointSettings::loadFromFile() {
     if (++settingsRead >= fileSettingsCount) break;
     // New fields added at end for backward compatibility
     serialization::readPod(inputFile, displayFileExtensions);
+    if (++settingsRead >= fileSettingsCount) break;
+    serialization::readPod(inputFile, recentsViewMode);
     if (++settingsRead >= fileSettingsCount) break;
   } while (false);
 

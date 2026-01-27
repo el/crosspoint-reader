@@ -56,6 +56,7 @@ const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Action("Check for updates")};
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 constexpr int filesSettingsCount = 2;
 const SettingInfo filesSettings[filesSettingsCount] = {
     SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions),
@@ -66,6 +67,13 @@ constexpr int filesSettingsCount = 1;
 const SettingInfo filesSettings[filesSettingsCount] = {
     SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions)};
 >>>>>>> 54af1ae (Add hide extension option)
+=======
+constexpr int filesSettingsCount = 2;
+const SettingInfo filesSettings[filesSettingsCount] = {
+    SettingInfo::Toggle("Display File Extensions", &CrossPointSettings::displayFileExtensions),
+    SettingInfo::Enum("Recents View Mode", &CrossPointSettings::recentsViewMode,
+                      {"File List", "Book Data", "Book Cover List", "Book Cover Grid"})};
+>>>>>>> ad791ea (Add view modes)
 }  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {

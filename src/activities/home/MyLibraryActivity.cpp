@@ -13,7 +13,6 @@
 #include "ScreenComponents.h"
 #include "fontIds.h"
 #include "util/StringUtils.h"
-#include "CrossPointSettings.h"
 
 namespace {
 // Layout constants
@@ -468,15 +467,25 @@ void MyLibraryActivity::renderRecentAsBookCoverList() const {
 
     if (StringUtils::checkFileExtension(book.path, ".epub")) {
       Epub epub(book.path, "/.crosspoint");
+<<<<<<< HEAD
       if (epub.load(false) && epub.generateThumbBmp(coverWidth, itemHeight - 10)) {
         coverBmpPath = epub.getThumbBmpPath(coverWidth, itemHeight - 10);
+=======
+      if (epub.load(false) && epub.generateThumbBmp()) {
+        coverBmpPath = epub.getThumbBmpPath();
+>>>>>>> ad791ea (Add view modes)
         hasCoverImage = true;
       }
     } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
                StringUtils::checkFileExtension(book.path, ".xtc")) {
       Xtc xtc(book.path, "/.crosspoint");
+<<<<<<< HEAD
       if (xtc.load() && xtc.generateThumbBmp(coverWidth, itemHeight - 10)) {
         coverBmpPath = xtc.getThumbBmpPath(coverWidth, itemHeight - 10);
+=======
+      if (xtc.load() && xtc.generateThumbBmp()) {
+        coverBmpPath = xtc.getThumbBmpPath();
+>>>>>>> ad791ea (Add view modes)
         hasCoverImage = true;
       }
     }
@@ -486,8 +495,11 @@ void MyLibraryActivity::renderRecentAsBookCoverList() const {
       if (SdMan.openFileForRead("MYLIB", coverBmpPath, file)) {
         Bitmap bitmap(file);
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+<<<<<<< HEAD
           // draw white rect for image background
           renderer.fillRect(LEFT_MARGIN - 1, y - 1, coverWidth + 2, itemHeight - 10 + 2, false);
+=======
+>>>>>>> ad791ea (Add view modes)
           renderer.drawBitmap(bitmap, LEFT_MARGIN, y, coverWidth, itemHeight - 10);
         }
         file.close();
@@ -495,10 +507,15 @@ void MyLibraryActivity::renderRecentAsBookCoverList() const {
     } else {
       // Draw a placeholder if no cover
       renderer.drawRect(LEFT_MARGIN, y, coverWidth, itemHeight - 10);
+<<<<<<< HEAD
       const char* noCoverText = "No cover";
       const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, noCoverText);
       const int textX = LEFT_MARGIN + (coverWidth - textWidth) / 2;
       renderer.drawText(UI_10_FONT_ID, textX, y + (itemHeight - 10) / 2 - 10, noCoverText, false);
+=======
+      renderer.drawCenteredText(UI_10_FONT_ID, y + (itemHeight - 10) / 2 - 10, "No cover", false,
+                                LEFT_MARGIN, coverWidth);
+>>>>>>> ad791ea (Add view modes)
     }
 
     // --- Draw text ---
@@ -558,15 +575,25 @@ void MyLibraryActivity::renderRecentAsBookCoverGrid() const {
 
     if (StringUtils::checkFileExtension(book.path, ".epub")) {
       Epub epub(book.path, "/.crosspoint");
+<<<<<<< HEAD
       if (epub.load(false) && epub.generateThumbBmp(itemWidth, itemHeight)) {
         coverBmpPath = epub.getThumbBmpPath(itemWidth, itemHeight);
+=======
+      if (epub.load(false) && epub.generateThumbBmp()) {
+        coverBmpPath = epub.getThumbBmpPath();
+>>>>>>> ad791ea (Add view modes)
         hasCoverImage = true;
       }
     } else if (StringUtils::checkFileExtension(book.path, ".xtch") ||
                StringUtils::checkFileExtension(book.path, ".xtc")) {
       Xtc xtc(book.path, "/.crosspoint");
+<<<<<<< HEAD
       if (xtc.load() && xtc.generateThumbBmp(itemWidth, itemHeight)) {
         coverBmpPath = xtc.getThumbBmpPath(itemWidth, itemHeight);
+=======
+      if (xtc.load() && xtc.generateThumbBmp()) {
+        coverBmpPath = xtc.getThumbBmpPath();
+>>>>>>> ad791ea (Add view modes)
         hasCoverImage = true;
       }
     }
@@ -583,10 +610,14 @@ void MyLibraryActivity::renderRecentAsBookCoverGrid() const {
     } else {
       // Draw a placeholder if no cover
       renderer.drawRect(x, y, itemWidth, itemHeight);
+<<<<<<< HEAD
       const char* noCoverText = "No cover";
       const int textWidth = renderer.getTextWidth(UI_10_FONT_ID, noCoverText);
       const int textX = x + (itemWidth - textWidth) / 2;
       renderer.drawText(UI_10_FONT_ID, textX, y + itemHeight / 2 - 10, noCoverText, false);
+=======
+      renderer.drawCenteredText(UI_10_FONT_ID, y + itemHeight / 2 - 10, "No cover", false, x, itemWidth);
+>>>>>>> ad791ea (Add view modes)
     }
 
     // --- Draw selection highlight ---
