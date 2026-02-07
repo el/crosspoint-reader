@@ -54,7 +54,7 @@ const SettingInfo readerSettings[readerSettingsCount] = {
 constexpr int controlsSettingsCount = 4;
 const SettingInfo controlsSettings[controlsSettingsCount] = {
     // Launches the remap wizard for front buttons.
-    SettingInfo::Action("Remap Front Buttons"),
+    SettingInfo::Action("Remap Front Buttons", SettingAction::RemapFrontButtons),
     SettingInfo::Enum("Side Button Layout (reader)", &CrossPointSettings::sideButtonLayout,
                       {"Prev, Next", "Next, Prev"}),
     SettingInfo::Toggle("Long-press Chapter Skip", &CrossPointSettings::longPressChapterSkip),
@@ -64,8 +64,12 @@ constexpr int systemSettingsCount = 6;
 const SettingInfo systemSettings[systemSettingsCount] = {
     SettingInfo::Enum("Time to Sleep", &CrossPointSettings::sleepTimeout,
                       {"1 min", "5 min", "10 min", "15 min", "30 min"}),
-    SettingInfo::Action("KOReader Sync"), SettingInfo::Action("OPDS Browser"), SettingInfo::Action("Network"),
-    SettingInfo::Action("Clear Cache"), SettingInfo::Action("Check for updates")};
+    SettingInfo::Action("Network", SettingAction::Network),
+    SettingInfo::Action("KOReader Sync", SettingAction::KOReaderSync),
+    SettingInfo::Action("OPDS Browser", SettingAction::OPDSBrowser),
+    SettingInfo::Action("Clear Cache", SettingAction::ClearCache),
+    SettingInfo::Action("Check for updates", SettingAction::CheckForUpdates)};
+
 }  // namespace
 
 void SettingsActivity::taskTrampoline(void* param) {
@@ -206,54 +210,45 @@ void SettingsActivity::toggleCurrentSetting() {
       SETTINGS.*(setting.valuePtr) = currentValue + setting.valueRange.step;
     }
   } else if (setting.type == SettingType::ACTION) {
-    if (strcmp(setting.name, "Remap Front Buttons") == 0) {
+    auto enterSubActivity = [this](Activity* activity) {
       xSemaphoreTake(renderingMutex, portMAX_DELAY);
       exitActivity();
-      enterNewActivity(new ButtonRemapActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
+      enterNewActivity(activity);
       xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "KOReader Sync") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+    };
+
+    auto onComplete = [this] {
       exitActivity();
-      enterNewActivity(new KOReaderSettingsActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "OPDS Browser") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
+      updateRequired = true;
+    };
+
+    auto onCompleteBool = [this](bool) {
       exitActivity();
-      enterNewActivity(new CalibreSettingsActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "Network") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      exitActivity();
-      enterNewActivity(new WifiSelectionActivity(renderer, mappedInput, [this](bool) {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "Clear Cache") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      exitActivity();
-      enterNewActivity(new ClearCacheActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
-    } else if (strcmp(setting.name, "Check for updates") == 0) {
-      xSemaphoreTake(renderingMutex, portMAX_DELAY);
-      exitActivity();
-      enterNewActivity(new OtaUpdateActivity(renderer, mappedInput, [this] {
-        exitActivity();
-        updateRequired = true;
-      }));
-      xSemaphoreGive(renderingMutex);
+      updateRequired = true;
+    };
+
+    switch (setting.action) {
+      case SettingAction::RemapFrontButtons:
+        enterSubActivity(new ButtonRemapActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::KOReaderSync:
+        enterSubActivity(new KOReaderSettingsActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::OPDSBrowser:
+        enterSubActivity(new CalibreSettingsActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::Network:
+        enterSubActivity(new WifiSelectionActivity(renderer, mappedInput, onCompleteBool));
+        break;
+      case SettingAction::ClearCache:
+        enterSubActivity(new ClearCacheActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::CheckForUpdates:
+        enterSubActivity(new OtaUpdateActivity(renderer, mappedInput, onComplete));
+        break;
+      case SettingAction::Unknown:
+        // Do nothing for unknown actions
+        break;
     }
   } else {
     return;
