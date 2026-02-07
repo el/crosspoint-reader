@@ -246,8 +246,8 @@ void SettingsActivity::toggleCurrentSetting() {
       case SettingAction::CheckForUpdates:
         enterSubActivity(new OtaUpdateActivity(renderer, mappedInput, onComplete));
         break;
-      case SettingAction::Unknown:
-        // Do nothing for unknown actions
+      case SettingAction::None:
+        // Do nothing
         break;
     }
   } else {
