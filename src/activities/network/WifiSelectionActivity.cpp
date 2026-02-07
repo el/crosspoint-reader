@@ -423,12 +423,25 @@ void WifiSelectionActivity::loop() {
     // Handle UP/DOWN navigation
     if (mappedInput.wasPressed(MappedInputManager::Button::Up) ||
         mappedInput.wasPressed(MappedInputManager::Button::Left)) {
+      const bool hasSavedPassword = !networks.empty() && networks[selectedNetworkIndex].hasSavedPassword;
+      if (hasSavedPassword && mappedInput.wasPressed(MappedInputManager::Button::Left)) {
+        selectedSSID = networks[selectedNetworkIndex].ssid;
+        state = WifiSelectionState::FORGET_PROMPT;
+        forgetPromptSelection = 0;  // Default to "Cancel"
+        updateRequired = true;
+        return;
+      }
+
       if (selectedNetworkIndex > 0) {
         selectedNetworkIndex--;
         updateRequired = true;
       }
     } else if (mappedInput.wasPressed(MappedInputManager::Button::Down) ||
                mappedInput.wasPressed(MappedInputManager::Button::Right)) {
+      if (mappedInput.wasPressed(MappedInputManager::Button::Right)) {
+        startWifiScan();
+        return;
+      }
       if (!networks.empty() && selectedNetworkIndex < static_cast<int>(networks.size()) - 1) {
         selectedNetworkIndex++;
         updateRequired = true;
@@ -586,7 +599,11 @@ void WifiSelectionActivity::renderNetworkList() const {
 
   // Draw help text
   renderer.drawText(SMALL_FONT_ID, 20, pageHeight - 75, "* = Encrypted | + = Saved");
-  const auto labels = mappedInput.mapLabels("« Back", "Connect", "", "");
+
+  const bool hasSavedPassword = !networks.empty() && networks[selectedNetworkIndex].hasSavedPassword;
+  const char* forgetLabel = hasSavedPassword ? "Forget" : "";
+
+  const auto labels = mappedInput.mapLabels("« Back", "Connect", forgetLabel, "Refresh");
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 }
 
