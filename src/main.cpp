@@ -12,6 +12,7 @@
 #include "Battery.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "FsHelpers.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
@@ -27,11 +28,6 @@
 #include "activities/util/FullScreenMessageActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
-
-#include "FsHelpers.h"
-#include <SD.h>
-#include "Bitmap.h"
-#include "BitmapHelpers.h"
 
 HalDisplay display;
 HalGPIO gpio;
@@ -286,7 +282,8 @@ void takeScreenshot() {
   }
 
   String filename_str = "/screenshots/screenshot-" + String(millis()) + ".bmp";
-  if (FsHelpers::saveFramebufferAsBmp(filename_str.c_str(), fb, HalDisplay::DISPLAY_WIDTH, HalDisplay::DISPLAY_HEIGHT)) {
+  if (FsHelpers::saveFramebufferAsBmp(filename_str.c_str(), fb, HalDisplay::DISPLAY_WIDTH,
+                                      HalDisplay::DISPLAY_HEIGHT)) {
     Serial.println("[SCR] Screenshot saved to " + filename_str);
   } else {
     Serial.println("[SCR] Failed to save screenshot");
