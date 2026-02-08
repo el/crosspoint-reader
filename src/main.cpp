@@ -386,13 +386,22 @@ void loop() {
     lastActivityTime = millis();  // Reset inactivity timer
   }
 
+  static bool screenshotButtonsReleased = true;
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
-    static unsigned long lastScreenshotTime = 0;
-    if (millis() - lastScreenshotTime > 3000) {
+    if (screenshotButtonsReleased) {
+      screenshotButtonsReleased = false;
       takeScreenshot();
-      lastScreenshotTime = millis();
+      if (renderer.storeBwBuffer()) {
+        renderer.drawRect(6, 6, HalDisplay::DISPLAY_HEIGHT - 12, HalDisplay::DISPLAY_WIDTH - 12, 2, true);
+        renderer.displayBuffer();
+        delay(1000);
+        renderer.restoreBwBuffer();
+        renderer.displayBuffer(HalDisplay::RefreshMode::HALF_REFRESH);
+      }
     }
     return;
+  } else {
+    screenshotButtonsReleased = true;
   }
   const unsigned long sleepTimeoutMs = SETTINGS.getSleepTimeoutMs();
   if (millis() - lastActivityTime >= sleepTimeoutMs) {
