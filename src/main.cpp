@@ -422,8 +422,12 @@ void loop() {
     powerManager.setPowerSaving(false);  // Restore normal CPU frequency on user activity
   }
 
+  static unsigned long lastScreenshotTime = 0;
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
-    takeScreenshot();
+    if (millis() - lastScreenshotTime > 3000) {
+      takeScreenshot();
+      lastScreenshotTime = millis();
+    }
     return;
   }
 
