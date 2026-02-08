@@ -58,8 +58,9 @@ bool FsHelpers::saveFramebufferAsBmp(const char* filename, const uint8_t* frameb
     }
   }
 
-  FsFile file = SdMan.open(filename, O_WR | O_CREAT);
-  if (!file) {
+  FsFile file;
+  if (!SdMan.openFileForWrite("SCR", filename, file)) {
+    Serial.printf("[%lu] [SCR] Failed to open file for writing\n", millis());
     return false;
   }
 
