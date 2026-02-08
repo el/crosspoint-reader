@@ -293,8 +293,43 @@ void setupDisplayAndFonts() {
 }
 
 void takeScreenshot() {
-  // take a screenshot and save it on the folder screenshot
-  // with the name Screenshot-<date>-<time>.bmp
+  uint8_t* fb = display.getFrameBuffer();
+  if (!fb) {
+    Serial.println("[SCR] Framebuffer not available");
+    return;
+  }
+
+  if (!SdMan.exists("/screenshots")) {
+    if (!SdMan.mkdir("/screenshots")) {
+      Serial.println("[SCR] Failed to create screenshots directory");
+      return;
+    }
+  }
+
+  String filename_str = "/screenshots/screenshot-" + String(millis()) + ".bmp";
+  FsFile file = SdMan.open(filename_str.c_str(), O_WR | O_CREAT);
+  if (!file) {
+    Serial.println("[SCR] Failed to create screenshot file");
+    return;
+  }
+
+  uint32_t bmpSize = 0;
+  uint8_t* bmpData = createBmp(fb, HalDisplay::DISPLAY_WIDTH, HalDisplay::DISPLAY_HEIGHT, &bmpSize);
+  if (!bmpData) {
+    Serial.println("[SCR] Failed to generate BMP data");
+    return;
+  }
+
+
+  if (file.write(bmpData, bmpSize) == bmpSize) {
+    Serial.println("[SCR] Screenshot saved to " + filename_str);
+  } else {
+    Serial.println("[SCR] Failed to write screenshot data");
+    SdMan.remove(filename_str.c_str());
+  }
+
+  file.close();
+  delete[] bmpData;
 }
 
 void setup() {
