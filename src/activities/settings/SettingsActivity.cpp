@@ -53,8 +53,8 @@ void SettingsActivity::onEnter() {
   // Append device-only ACTION items
   controlsSettings.insert(controlsSettings.begin(),
                           SettingInfo::Action("Remap Front Buttons", SettingAction::RemapFrontButtons));
-  systemSettings.push_back(SettingInfo::Action("Network", SettingAction::Network))
-      systemSettings.push_back(SettingInfo::Action("KOReader Sync", SettingAction::KOReaderSync));
+  systemSettings.push_back(SettingInfo::Action("Network", SettingAction::Network));
+  systemSettings.push_back(SettingInfo::Action("KOReader Sync", SettingAction::KOReaderSync));
   systemSettings.push_back(SettingInfo::Action("OPDS Browser", SettingAction::OPDSBrowser));
   systemSettings.push_back(SettingInfo::Action("Clear Cache", SettingAction::ClearCache));
   systemSettings.push_back(SettingInfo::Action("Check for updates", SettingAction::CheckForUpdates));
