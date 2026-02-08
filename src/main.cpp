@@ -386,15 +386,14 @@ void loop() {
     lastActivityTime = millis();  // Reset inactivity timer
   }
 
-  static unsigned long lastScreenshotTime = 0;
-  if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
+if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
+    static unsigned long lastScreenshotTime = 0; 
     if (millis() - lastScreenshotTime > 3000) {
-      takeScreenshot();
-      lastScreenshotTime = millis();
+        takeScreenshot();
+        lastScreenshotTime = millis();
     }
     return;
-  }
-
+}
   const unsigned long sleepTimeoutMs = SETTINGS.getSleepTimeoutMs();
   if (millis() - lastActivityTime >= sleepTimeoutMs) {
     Serial.printf("[%lu] [SLP] Auto-sleep triggered after %lu ms of inactivity\n", millis(), sleepTimeoutMs);
