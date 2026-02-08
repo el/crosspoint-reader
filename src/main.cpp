@@ -275,7 +275,7 @@ void setupDisplayAndFonts() {
 }
 
 void takeScreenshot() {
-  uint8_t* fb = display.getFrameBuffer();
+  const uint8_t* fb = display.getFrameBuffer();
   if (!fb) {
     Serial.println("[SCR] Framebuffer not available");
     return;
