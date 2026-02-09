@@ -1,5 +1,6 @@
 #include "FsHelpers.h"
 
+#include "Bitmap.h" // Required for BmpHeader struct definition
 #include <BitmapHelpers.h>
 #include <SDCardManager.h>
 
@@ -64,19 +65,13 @@ bool FsHelpers::saveFramebufferAsBmp(const char* filename, const uint8_t* frameb
     return false;
   }
 
-  uint32_t headerSize = 0;
-  uint8_t* bmpHeader = createBmpHeader(width, height, &headerSize);
-  if (!bmpHeader) {
-    file.close();
-    SdMan.remove(filename);
-    return false;
-  }
+  BmpHeader header;
+  createBmpHeader(&header, width, height);
 
   bool write_error = false;
-  if (file.write(bmpHeader, headerSize) != headerSize) {
+  if (file.write((uint8_t*)&header, sizeof(header)) != sizeof(header)) {
     write_error = true;
   }
-  delete[] bmpHeader;
 
   if (write_error) {
     file.close();
