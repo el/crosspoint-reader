@@ -46,8 +46,7 @@ std::string FsHelpers::normalisePath(const std::string &path) {
 
 bool FsHelpers::saveFramebufferAsBmp(const char *filename,
                                      const uint8_t *framebuffer, int width,
-                                     int height,
-                                     GfxRenderer::Orientation orientation) {
+                                     int height) {
   if (!framebuffer) {
     return false;
   }
