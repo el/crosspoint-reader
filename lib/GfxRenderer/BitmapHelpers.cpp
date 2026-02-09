@@ -1,7 +1,7 @@
 #include "BitmapHelpers.h"
 
 #include <cstdint>
-#include <cstring> // Added for memset
+#include <cstring>  // Added for memset
 
 #include "Bitmap.h"
 
