@@ -3,7 +3,7 @@
 #include <GfxRenderer.h>
 #include <HalDisplay.h>
 #include <HalGPIO.h>
-#include <SDCardManager.h>
+#include <HalStorage.h>
 #include <SPI.h>
 #include <builtinFonts/all.h>
 
@@ -28,6 +28,7 @@
 #include "activities/util/FullScreenMessageActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+#include "util/ButtonNavigator.h"
 
 HalDisplay display;
 HalGPIO gpio;
@@ -195,6 +196,8 @@ void waitForPowerRelease() {
 
 // Enter deep sleep mode
 void enterDeepSleep() {
+  APP_STATE.lastSleepFromReader = currentActivity && currentActivity->isReaderActivity();
+  APP_STATE.saveToFile();
   exitActivity();
   enterNewActivity(new SleepActivity(renderer, mappedInputManager));
 
@@ -252,6 +255,7 @@ void onGoHome() {
 
 void setupDisplayAndFonts() {
   display.begin();
+  renderer.begin();
   Serial.printf("[%lu] [   ] Display initialized\n", millis());
   renderer.insertFont(BOOKERLY_14_FONT_ID, bookerly14FontFamily);
 #ifndef OMIT_FONTS
@@ -307,7 +311,7 @@ void setup() {
 
   // SD Card Initialization
   // We need 6 open files concurrently when parsing a new chapter
-  if (!SdMan.begin()) {
+  if (!Storage.begin()) {
     Serial.printf("[%lu] [   ] SD card initialization failed\n", millis());
     setupDisplayAndFonts();
     exitActivity();
@@ -318,6 +322,7 @@ void setup() {
   SETTINGS.loadFromFile();
   KOREADER_STORE.loadFromFile();
   UITheme::getInstance().reload();
+  ButtonNavigator::setMappedInputManager(mappedInputManager);
 
   switch (gpio.getWakeupReason()) {
     case HalGPIO::WakeupReason::PowerButton:
@@ -348,9 +353,10 @@ void setup() {
   APP_STATE.loadFromFile();
   RECENT_BOOKS.loadFromFile();
 
-  // Boot to home screen directly when back button is held or when reader activity crashes 3 times
-  if (APP_STATE.openEpubPath.empty() || mappedInputManager.isPressed(MappedInputManager::Button::Back) ||
-      APP_STATE.readerActivityLoadCount > 0) {
+  // Boot to home screen if no book is open, last sleep was not from reader, back button is held, or reader activity
+  // crashed (indicated by readerActivityLoadCount > 0)
+  if (APP_STATE.openEpubPath.empty() || !APP_STATE.lastSleepFromReader ||
+      mappedInputManager.isPressed(MappedInputManager::Button::Back) || APP_STATE.readerActivityLoadCount > 0) {
     onGoHome();
   } else {
     // Clear app state to avoid getting into a boot loop if the epub doesn't load
