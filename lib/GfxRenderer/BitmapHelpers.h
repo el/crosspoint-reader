@@ -3,15 +3,16 @@
 #include <cstdint>
 #include <cstring>
 
+struct BmpHeader;
+
 // Helper functions
 uint8_t quantize(int gray, int x, int y);
 uint8_t quantizeSimple(int gray);
 uint8_t quantize1bit(int gray, int x, int y);
 int adjustPixel(int gray);
-// Creates a 1-bit BMP header in memory.
-// Returns a pointer to the BMP header data, and sets headerSize to the size of the data.
-// The caller is responsible for freeing the returned buffer.
-uint8_t* createBmpHeader(int width, int height, uint32_t* headerSize);
+
+// Populates a 1-bit BMP header in the provided memory.
+void createBmpHeader(BmpHeader *bmpHeader, int width, int height);
 
 // 1-bit Atkinson dithering - better quality than noise dithering for thumbnails
 // Error distribution pattern (same as 2-bit but quantizes to 2 levels):
@@ -86,7 +87,7 @@ class Atkinson1BitDitherer {
     memset(errorRow2, 0, (width + 4) * sizeof(int16_t));
   }
 
- private:
+private:
   int width;
   int16_t* errorRow0;
   int16_t* errorRow1;
@@ -100,7 +101,7 @@ class Atkinson1BitDitherer {
 //     1/8
 // Less error buildup = fewer artifacts than Floyd-Steinberg
 class AtkinsonDitherer {
- public:
+public:
   explicit AtkinsonDitherer(int width) : width(width) {
     errorRow0 = new int16_t[width + 4]();  // Current row
     errorRow1 = new int16_t[width + 4]();  // Next row
@@ -185,7 +186,7 @@ class AtkinsonDitherer {
     memset(errorRow2, 0, (width + 4) * sizeof(int16_t));
   }
 
- private:
+private:
   int width;
   int16_t* errorRow0;
   int16_t* errorRow1;
@@ -201,7 +202,7 @@ class AtkinsonDitherer {
 // 1/16 5/16 3/16
 //      7/16  X
 class FloydSteinbergDitherer {
- public:
+public:
   explicit FloydSteinbergDitherer(int width) : width(width), rowCount(0) {
     errorCurRow = new int16_t[width + 2]();  // +2 for boundary handling
     errorNextRow = new int16_t[width + 2]();
@@ -311,7 +312,7 @@ class FloydSteinbergDitherer {
     rowCount = 0;
   }
 
- private:
+private:
   int width;
   int rowCount;
   int16_t* errorCurRow;

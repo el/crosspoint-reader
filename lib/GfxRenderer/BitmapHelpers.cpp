@@ -1,6 +1,7 @@
 #include "BitmapHelpers.h"
 
 #include <cstdint>
+#include <cstring> // Added for memset
 
 #include "Bitmap.h"
 
@@ -107,17 +108,15 @@ uint8_t quantize1bit(int gray, int x, int y) {
   return (gray >= adjustedThreshold) ? 1 : 0;
 }
 
-uint8_t* createBmpHeader(int width, int height, uint32_t* headerSize) {
-  *headerSize = sizeof(BmpHeader);
+void createBmpHeader(BmpHeader* bmpHeader, int width, int height) {
+  if (!bmpHeader) return;
+
+  // Zero out the memory to ensure no garbage data if called on uninitialized stack memory
+  std::memset(bmpHeader, 0, sizeof(BmpHeader));
+
   uint32_t rowSize = (width + 31) / 32 * 4;
   uint32_t imageSize = rowSize * height;
   uint32_t fileSize = sizeof(BmpHeader) + imageSize;
-
-  BmpHeader* bmpHeader = new BmpHeader();
-  if (!bmpHeader) {
-    *headerSize = 0;
-    return nullptr;
-  }
 
   bmpHeader->fileHeader.bfType = 0x4D42;
   bmpHeader->fileHeader.bfSize = fileSize;
@@ -148,6 +147,4 @@ uint8_t* createBmpHeader(int width, int height, uint32_t* headerSize) {
   bmpHeader->colors[1].rgbGreen = 255;
   bmpHeader->colors[1].rgbRed = 255;
   bmpHeader->colors[1].rgbReserved = 0;
-
-  return (uint8_t*)bmpHeader;
 }
