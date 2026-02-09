@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <GfxRenderer.h>
 
 class FsHelpers {
 public:
