@@ -2,7 +2,7 @@
 
 #include <GfxRenderer.h>
 #include <HalStorage.h>
-#include <HardwareSerial.h>
+#include <Logging.h>
 #include <expat.h>
 
 #include "../Page.h"
@@ -11,7 +11,7 @@ const char* HEADER_TAGS[] = {"h1", "h2", "h3", "h4", "h5", "h6"};
 constexpr int NUM_HEADER_TAGS = sizeof(HEADER_TAGS) / sizeof(HEADER_TAGS[0]);
 
 // Minimum file size (in bytes) to show indexing popup - smaller chapters don't benefit from it
-constexpr size_t MIN_SIZE_FOR_POPUP = 50 * 1024;  // 50KB
+constexpr size_t MIN_SIZE_FOR_POPUP = 10 * 1024;  // 10KB
 
 const char* BLOCK_TAGS[] = {"p", "li", "div", "br", "blockquote"};
 constexpr int NUM_BLOCK_TAGS = sizeof(BLOCK_TAGS) / sizeof(BLOCK_TAGS[0]);
@@ -168,7 +168,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
       }
     }
 
-    Serial.printf("[%lu] [EHP] Image alt: %s\n", millis(), alt.c_str());
+    LOG_DBG("EHP", "Image alt: %s", alt.c_str());
 
     self->startNewTextBlock(centeredBlockStyle);
     self->italicUntilDepth = min(self->italicUntilDepth, self->depth);
@@ -386,7 +386,7 @@ void XMLCALL ChapterHtmlSlimParser::characterData(void* userData, const XML_Char
   // memory.
   // Spotted when reading Intermezzo, there are some really long text blocks in there.
   if (self->currentTextBlock->size() > 750) {
-    Serial.printf("[%lu] [EHP] Text block too long, splitting into multiple pages\n", millis());
+    LOG_DBG("EHP", "Text block too long, splitting into multiple pages");
     self->currentTextBlock->layoutAndExtractLines(
         self->renderer, self->fontId, self->viewportWidth,
         [self](const std::shared_ptr<TextBlock>& textBlock) { self->addLineToPage(textBlock); }, false);
@@ -477,7 +477,7 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
   int done;
 
   if (!parser) {
-    Serial.printf("[%lu] [EHP] Couldn't allocate memory for parser\n", millis());
+    LOG_ERR("EHP", "Couldn't allocate memory for parser");
     return false;
   }
 
@@ -499,7 +499,7 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
   do {
     void* const buf = XML_GetBuffer(parser, 1024);
     if (!buf) {
-      Serial.printf("[%lu] [EHP] Couldn't allocate memory for buffer\n", millis());
+      LOG_ERR("EHP", "Couldn't allocate memory for buffer");
       XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
       XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
       XML_SetCharacterDataHandler(parser, nullptr);
@@ -511,7 +511,7 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
     const size_t len = file.read(buf, 1024);
 
     if (len == 0 && file.available() > 0) {
-      Serial.printf("[%lu] [EHP] File read error\n", millis());
+      LOG_ERR("EHP", "File read error");
       XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
       XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
       XML_SetCharacterDataHandler(parser, nullptr);
@@ -523,8 +523,8 @@ bool ChapterHtmlSlimParser::parseAndBuildPages() {
     done = file.available() == 0;
 
     if (XML_ParseBuffer(parser, static_cast<int>(len), done) == XML_STATUS_ERROR) {
-      Serial.printf("[%lu] [EHP] Parse error at line %lu:\n%s\n", millis(), XML_GetCurrentLineNumber(parser),
-                    XML_ErrorString(XML_GetErrorCode(parser)));
+      LOG_ERR("EHP", "Parse error at line %lu:\n%s", XML_GetCurrentLineNumber(parser),
+              XML_ErrorString(XML_GetErrorCode(parser)));
       XML_StopParser(parser, XML_FALSE);                // Stop any pending processing
       XML_SetElementHandler(parser, nullptr, nullptr);  // Clear callbacks
       XML_SetCharacterDataHandler(parser, nullptr);
@@ -568,7 +568,7 @@ void ChapterHtmlSlimParser::addLineToPage(std::shared_ptr<TextBlock> line) {
 
 void ChapterHtmlSlimParser::makePages() {
   if (!currentTextBlock) {
-    Serial.printf("[%lu] [EHP] !! No text block to make pages for !!\n", millis());
+    LOG_ERR("EHP", "!! No text block to make pages for !!");
     return;
   }
 
