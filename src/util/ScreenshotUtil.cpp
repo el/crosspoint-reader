@@ -65,7 +65,7 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
   createBmpHeader(&header, phyWidth, phyHeight);
 
   bool write_error = false;
-  if (file.write((uint8_t*)&header, sizeof(header)) != sizeof(header)) {
+  if (file.write(reinterpret_cast<uint8_t*>(&header), sizeof(header)) != sizeof(header)) {
     write_error = true;
   }
 
@@ -76,7 +76,6 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
   }
 
   const uint32_t rowSizePadded = (phyWidth + 31) / 32 * 4;
-  uint8_t padding[4] = {0, 0, 0, 0};
 
   // rotate the image 90d counter-clockwise on-the-fly while writing to save memory
   uint8_t rowBuffer[rowSizePadded];
