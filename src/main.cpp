@@ -409,7 +409,10 @@ void loop() {
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
     if (screenshotButtonsReleased) {
       screenshotButtonsReleased = false;
-      ScreenshotUtil::takeScreenshot(renderer);
+      if (currentActivity) {
+        Activity::RenderLock lock(currentActivity);
+        ScreenshotUtil::takeScreenshot(renderer);
+      }
     }
     return;
   } else {
