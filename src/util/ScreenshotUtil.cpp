@@ -80,6 +80,8 @@ bool ScreenshotUtil::saveFramebufferAsBmp(const char* filename, const uint8_t* f
   constexpr size_t kMaxRowSize = 64;
   if (rowSizePadded > kMaxRowSize) {
     LOG_ERR("SCR", "Row size %u exceeds buffer capacity", rowSizePadded);
+    file.close();
+    Storage.remove(filename);
     return false;
   }
 
