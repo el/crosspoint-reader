@@ -41,7 +41,7 @@ Button layout can be customized in **[Settings](#35-settings)**.
 ### Taking a Screenshot
 When the Power Button and Volume Down button are pressed at the same time, it will take a screenshot and save it in the folder `screenshots/`.
 
-Alternatively, while reading a book, hold the **Confirm** button to open the reader menu and select **Take screenshot**.
+Alternatively, while reading a book, press the **Confirm** button to open the reader menu and select **Take screenshot**.
 
 ---
 
