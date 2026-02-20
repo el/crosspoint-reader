@@ -410,7 +410,7 @@ void loop() {
     if (screenshotButtonsReleased) {
       screenshotButtonsReleased = false;
       if (currentActivity) {
-        Activity::RenderLock lock(currentActivity);
+        Activity::RenderLock lock(*currentActivity);
         ScreenshotUtil::takeScreenshot(renderer);
       }
     }
