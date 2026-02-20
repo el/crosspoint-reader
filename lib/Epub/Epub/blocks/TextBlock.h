@@ -18,6 +18,7 @@ class TextBlock final : public Block {
   BlockStyle blockStyle;
 
  public:
+  const std::list<std::string>& getWords() const { return words; }
   explicit TextBlock(std::list<std::string> words, std::list<uint16_t> word_xpos,
                      std::list<EpdFontFamily::Style> word_styles, const BlockStyle& blockStyle = BlockStyle())
       : words(std::move(words)),
