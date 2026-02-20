@@ -409,11 +409,7 @@ void loop() {
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
     if (screenshotButtonsReleased) {
       screenshotButtonsReleased = false;
-      // Take a screenshot by dumping the current framebuffer over serial.
-      logSerial.printf("SCREENSHOT_START:%d\n", HalDisplay::BUFFER_SIZE);
-      uint8_t* buf = display.getFrameBuffer();
-      logSerial.write(buf, HalDisplay::BUFFER_SIZE);
-      logSerial.printf("SCREENSHOT_END\n");
+      ScreenshotUtil::takeScreenshot(renderer);
     }
     return;
   } else {
