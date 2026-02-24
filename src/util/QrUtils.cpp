@@ -26,15 +26,15 @@ void QrUtils::drawQrCode(GfxRenderer& renderer, const Rect& bounds, const std::s
 
   if (res == 0) {
     // Determine the optimal pixel size.
-    const int maxDim = std::min(bounds.w, bounds.h);
+    const int maxDim = std::min(bounds.width, bounds.height);
 
     int px = maxDim / qrcode.size;
     if (px < 1) px = 1;
 
     // Calculate centering X and Y
     const int qrDisplaySize = qrcode.size * px;
-    const int xOff = bounds.x + (bounds.w - qrDisplaySize) / 2;
-    const int yOff = bounds.y + (bounds.h - qrDisplaySize) / 2;
+    const int xOff = bounds.x + (bounds.width - qrDisplaySize) / 2;
+    const int yOff = bounds.y + (bounds.height - qrDisplaySize) / 2;
 
     // Draw the QR Code
     for (uint8_t cy = 0; cy < qrcode.size; cy++) {

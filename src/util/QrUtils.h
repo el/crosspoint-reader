@@ -1,6 +1,7 @@
 #pragma once
 
 #include <GfxRenderer.h>
+#include "components/themes/BaseTheme.h"
 
 #include <string>
 
