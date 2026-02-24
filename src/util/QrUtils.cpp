@@ -2,9 +2,12 @@
 
 #include <qrcode.h>
 
+#include <algorithm>
+#include <memory>
+
 #include "Logging.h"
 
-void QrUtils::drawQrCode(GfxRenderer& renderer, const Rect& bounds, const std::string& textPayload) {
+void QrUtils::drawQrCode(const GfxRenderer& renderer, const Rect& bounds, const std::string& textPayload) {
   // Dynamically calculate the QR code version based on text length
   // Version 4 holds ~114 bytes, Version 10 ~395, Version 20 ~1066, up to 40
   // qrcode.h max version is 40.
