@@ -54,7 +54,8 @@ void QrDisplayActivity::render(Activity::RenderLock&&) {
     // Determine the optimal pixel size.
     // Leave some margin (e.g., 40 pixels total)
     const int availableWidth = pageWidth - 40;
-    const int availableHeight = pageHeight - metrics.topPadding - metrics.headerHeight - metrics.verticalSpacing * 2 - 40;
+    const int availableHeight =
+        pageHeight - metrics.topPadding - metrics.headerHeight - metrics.verticalSpacing * 2 - 40;
     const int maxDim = std::min(availableWidth, availableHeight);
 
     int px = maxDim / qrcode.size;

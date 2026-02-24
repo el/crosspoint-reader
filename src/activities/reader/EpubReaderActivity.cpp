@@ -1,6 +1,7 @@
 #include "EpubReaderActivity.h"
 
 #include <Epub/Page.h>
+#include <Epub/blocks/TextBlock.h>
 #include <FsHelpers.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
@@ -15,7 +16,6 @@
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
 #include "QrDisplayActivity.h"
-#include <Epub/blocks/TextBlock.h>
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -424,12 +424,10 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
           }
           if (!fullText.empty()) {
             exitActivity();
-            enterNewActivity(new QrDisplayActivity(
-                renderer, mappedInput, fullText,
-                [this]() {
-                  exitActivity();
-                  requestUpdate();
-                }));
+            enterNewActivity(new QrDisplayActivity(renderer, mappedInput, fullText, [this]() {
+              exitActivity();
+              requestUpdate();
+            }));
             break;
           }
         }
