@@ -5,19 +5,31 @@
 #include <algorithm>
 #include <memory>
 
+#include "fontIds.h"
 #include "Logging.h"
 
 void QrUtils::drawQrCode(const GfxRenderer& renderer, const Rect& bounds, const std::string& textPayload) {
-  // Dynamically calculate the QR code version based on text length
-  // Version 4 holds ~114 bytes, Version 10 ~395, Version 20 ~1066, up to 40
-  // qrcode.h max version is 40.
-  // Formula: approx version = size / 26 + 1 (very rough estimate, better to find best fit)
+  // Dynamically calculate the QR code version based on text length (Byte Mode, ECC_LOW)
+  // Max capacities for Byte Mode and ECC_LOW for Versions 1-40.
+  static const uint16_t MAX_CAPACITY[40] = {
+      17, 32, 53, 78, 106, 134, 154, 192, 230, 271, 321, 367, 425, 458, 520, 586, 644, 718, 792, 858,
+      929, 1003, 1091, 1171, 1273, 1367, 1465, 1528, 1628, 1732, 1840, 1952, 2068, 2188, 2303, 2431, 2563, 2699, 2809, 2953
+  };
+
   const size_t len = textPayload.length();
-  int version = 4;
-  if (len > 114) version = 10;
-  if (len > 395) version = 20;
-  if (len > 1066) version = 30;
-  if (len > 2110) version = 40;
+  if (len > MAX_CAPACITY[39]) {
+    LOG_ERR("QR", "Text payload (%zu bytes) is too large for max QR Code version 40 (%u bytes)", len, MAX_CAPACITY[39]);
+    renderer.drawText(UI_12_FONT_ID, bounds.x, bounds.y, "Text too long for QR Code", true);
+    return;
+  }
+
+  int version = 4; // Start at 4 as a minimum size for aesthetic reasons (as in original code)
+  for (int i = 0; i < 40; i++) {
+    if (len <= MAX_CAPACITY[i]) {
+      version = std::max(4, i + 1);
+      break;
+    }
+  }
 
   // Make sure we have a large enough buffer on the heap to avoid blowing the stack
   uint32_t bufferSize = qrcode_getBufferSize(version);
