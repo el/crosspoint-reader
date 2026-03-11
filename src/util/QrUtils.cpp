@@ -24,7 +24,11 @@ void QrUtils::drawQrCode(const GfxRenderer& renderer, const Rect& bounds, const 
   std::string qrText = textPayload;
 
   if (qrText.length() > maxCapacity) {
-    qrText.erase(maxCapacity);
+    size_t truncationPoint = maxCapacity;
+    while (truncationPoint > 0 && (static_cast<unsigned char>(qrText[truncationPoint]) & 0xC0) == 0x80) {
+      --truncationPoint;
+    }
+    qrText.erase(truncationPoint);
     truncated = true;
     LOG_ERR("QR", "Text payload truncated to %zu bytes", maxCapacity);
   }
