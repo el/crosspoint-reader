@@ -21,14 +21,9 @@ void BmpViewerActivity::loadSiblingImages() {
 
   if (filePath.empty()) return;
 
-  std::string dirPath = "/";
-  std::string fileName = filePath;
+  std::string dirPath = FsHelpers::extractFolderPath(filePath);
   size_t lastSlash = filePath.find_last_of('/');
-  if (lastSlash != std::string::npos) {
-    dirPath = filePath.substr(0, lastSlash);
-    if (dirPath.empty()) dirPath = "/";
-    fileName = filePath.substr(lastSlash + 1);
-  }
+  std::string fileName = (lastSlash != std::string::npos) ? filePath.substr(lastSlash + 1) : filePath;
 
   auto dir = Storage.open(dirPath.c_str());
   if (!dir || !dir.isDirectory()) {
@@ -193,12 +188,7 @@ void BmpViewerActivity::loop() {
   if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
     if (siblingImages.size() > 1 && currentImageIndex > 0) {
       currentImageIndex--;
-      std::string dirPath = "/";
-      size_t lastSlash = filePath.find_last_of('/');
-      if (lastSlash != std::string::npos) {
-        dirPath = filePath.substr(0, lastSlash);
-        if (dirPath.empty()) dirPath = "/";
-      }
+      std::string dirPath = FsHelpers::extractFolderPath(filePath);
       if (dirPath.back() != '/') dirPath += "/";
       filePath = dirPath + siblingImages[currentImageIndex];
       onEnter();
@@ -210,12 +200,7 @@ void BmpViewerActivity::loop() {
     if (siblingImages.size() > 1 && currentImageIndex != -1 &&
         currentImageIndex < static_cast<int>(siblingImages.size()) - 1) {
       currentImageIndex++;
-      std::string dirPath = "/";
-      size_t lastSlash = filePath.find_last_of('/');
-      if (lastSlash != std::string::npos) {
-        dirPath = filePath.substr(0, lastSlash);
-        if (dirPath.empty()) dirPath = "/";
-      }
+      std::string dirPath = FsHelpers::extractFolderPath(filePath);
       if (dirPath.back() != '/') dirPath += "/";
       filePath = dirPath + siblingImages[currentImageIndex];
       onEnter();
