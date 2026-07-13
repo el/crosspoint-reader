@@ -7,6 +7,7 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <Txt.h>
+#include <WiFi.h>
 #include <Xtc.h>
 
 #include "CrossPointSettings.h"
@@ -16,6 +17,9 @@
 #include "fontIds.h"
 #include "images/Logo120.h"
 #include "images/MoonIcon.h"
+#include "network/WifiAutoConnect.h"
+#include "trmnl/TrmnlClient.h"
+#include "trmnl/TrmnlStore.h"
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
@@ -51,6 +55,8 @@ void SleepActivity::onEnter() {
       } else {
         return renderCustomSleepScreen();
       }
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::TRMNL):
+      return renderTrmnlSleepScreen();
     default:
       return renderDefaultSleepScreen();
   }
@@ -328,6 +334,41 @@ void SleepActivity::renderCoverSleepScreen() const {
   }
 
   return (this->*renderNoCoverSleepScreen)();
+}
+
+void SleepActivity::renderTrmnlSleepScreen() const {
+  // Refresh the cached dashboard on the way into sleep. Every failure falls
+  // back to the previously cached image, so sleeping never blocks on network
+  // problems for longer than the bounded connect timeout.
+  if (TRMNL_STORE.isLinked()) {
+    constexpr uint32_t TRMNL_WIFI_TIMEOUT_MS = 10000;
+    if (WifiAutoConnect::tryConnectLastNetwork(TRMNL_WIFI_TIMEOUT_MS)) {
+      const auto result = TrmnlClient::fetchImageToCache();
+      if (result != TrmnlClient::OK) {
+        LOG_ERR("SLP", "TRMNL fetch failed (%d), using cached image", static_cast<int>(result));
+      }
+      // Radio off before the slow e-ink refresh; enterDeepSleep() would only
+      // tear it down after this render completes.
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+    }
+  }
+
+  HalFile file;
+  if (Storage.openFileForRead("SLP", TrmnlStore::cachedImagePath(), file)) {
+    Bitmap bitmap(file, true);
+    if (bitmap.parseHeaders() == BmpReaderError::Ok) {
+      // TRMNL dashboards are landscape (800x480, exactly the panel size), so
+      // render 1:1 in the native landscape orientation regardless of the
+      // reader orientation.
+      renderer.setOrientation(GfxRenderer::Orientation::LandscapeCounterClockwise);
+      renderBitmapSleepScreen(bitmap);
+      renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+      return;
+    }
+  }
+
+  renderDefaultSleepScreen();
 }
 
 void SleepActivity::renderLastScreenSleepScreen() const {

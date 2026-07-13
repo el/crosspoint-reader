@@ -16,6 +16,7 @@
 #include "KOReaderCredentialStore.h"
 #include "ReaderFontSizes.h"
 #include "activities/settings/SettingsActivity.h"
+#include "trmnl/TrmnlStore.h"
 #include "util/DictionaryRegistry.h"
 
 // Build the font family setting dynamically. When registry is non-null, SD card fonts
@@ -201,6 +202,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
     sleepScreenValues[CrossPointSettings::COVER_CUSTOM] = StrId::STR_COVER_CUSTOM;
     sleepScreenValues[CrossPointSettings::BLANK] = StrId::STR_NONE_OPT;
     sleepScreenValues[CrossPointSettings::QUICK_RESUME] = StrId::STR_QUICK_RESUME;
+    sleepScreenValues[CrossPointSettings::TRMNL] = StrId::STR_TRMNL;
 
     std::vector<StrId> statusBarClockValues(CrossPointSettings::STATUS_BAR_CLOCK_MODE_COUNT);
     statusBarClockValues[CrossPointSettings::STATUS_BAR_CLOCK_HIDE] = StrId::STR_HIDE;
@@ -210,6 +212,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
     std::vector<SettingInfo> v = {
         // --- Display ---
         SettingInfo::Enum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen, std::move(sleepScreenValues),
+                          "sleepScreen", StrId::STR_CAT_DISPLAY),
                           "sleepScreen", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
                           {StrId::STR_FIT, StrId::STR_CROP}, "sleepScreenCoverMode", StrId::STR_CAT_DISPLAY),
@@ -370,6 +373,29 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
               KOREADER_STORE.saveToFile();
             },
             "koSyncBehavior", StrId::STR_KOREADER_SYNC),
+        // --- TRMNL (web-only, uses TrmnlStore; device UI is TrmnlSettingsActivity) ---
+        SettingInfo::DynamicString(
+            StrId::STR_TRMNL_SERVER_URL, [] { return TRMNL_STORE.getServerUrl(); },
+            [](const std::string& v) {
+              TRMNL_STORE.setServerUrl(v);
+              TRMNL_STORE.saveToFile();
+            },
+            "trmnlServerUrl", StrId::STR_TRMNL),
+        SettingInfo::DynamicString(
+            StrId::STR_TRMNL_API_KEY, [] { return TRMNL_STORE.getApiKey(); },
+            [](const std::string& v) {
+              TRMNL_STORE.setApiKey(v);
+              TRMNL_STORE.saveToFile();
+            },
+            "trmnlApiKey", StrId::STR_TRMNL),
+        SettingInfo::DynamicString(
+            StrId::STR_TRMNL_MAC_ID, [] { return TRMNL_STORE.getCustomMacId(); },
+            [](const std::string& v) {
+              if (TRMNL_STORE.setCustomMacId(v)) {
+                TRMNL_STORE.saveToFile();
+              }
+            },
+            "trmnlMacId", StrId::STR_TRMNL),
         // --- Status Bar Settings (web-only, uses StatusBarSettingsActivity) ---
         SettingInfo::Toggle(StrId::STR_CHAPTER_PAGE_COUNT, &CrossPointSettings::statusBarChapterPageCount,
                             "statusBarChapterPageCount", StrId::STR_CUSTOMISE_STATUS_BAR),

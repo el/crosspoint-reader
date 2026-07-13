@@ -22,6 +22,7 @@
 #include "SettingsList.h"
 #include "StatusBarSettingsActivity.h"
 #include "TextSettingsActivity.h"
+#include "TrmnlSettingsActivity.h"
 #include "activities/network/WifiSelectionActivity.h"
 #include "activities/util/IntervalSelectionActivity.h"
 #include "components/UITheme.h"
@@ -73,6 +74,7 @@ void SettingsActivity::rebuildSettingsLists() {
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser));
+  systemSettings.push_back(SettingInfo::Action(StrId::STR_TRMNL, SettingAction::Trmnl));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CLEAR_READING_CACHE, SettingAction::ClearCache));
   // TODO: Touch devices need their own firmware update path/artifacts before OTA is exposed.
   if (!BoardConfig::hasTouch()) {
@@ -378,6 +380,9 @@ void SettingsActivity::toggleCurrentSetting() {
         break;
       case SettingAction::OPDSBrowser:
         startActivityForResult(std::make_unique<OpdsServerListActivity>(renderer, mappedInput), resultHandler);
+        break;
+      case SettingAction::Trmnl:
+        startActivityForResult(std::make_unique<TrmnlSettingsActivity>(renderer, mappedInput), resultHandler);
         break;
       case SettingAction::Network:
         startActivityForResult(std::make_unique<WifiSelectionActivity>(renderer, mappedInput, false), resultHandler);
