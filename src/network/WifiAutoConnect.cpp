@@ -8,7 +8,7 @@
 
 namespace WifiAutoConnect {
 
-bool tryConnectLastNetwork(const uint32_t timeoutMs) {
+bool tryConnectLastNetwork(const uint32_t timeoutMs, const bool* cancelFlag) {
   if (WiFi.status() == WL_CONNECTED) {
     return true;
   }
@@ -45,6 +45,9 @@ bool tryConnectLastNetwork(const uint32_t timeoutMs) {
 
   const uint32_t start = millis();
   while (millis() - start < timeoutMs) {
+    if (cancelFlag && *cancelFlag) {
+      break;  // Caller abandoned the attempt
+    }
     const wl_status_t status = WiFi.status();
     if (status == WL_CONNECTED) {
       LOG_DBG("WIFI", "Auto-connect: connected");

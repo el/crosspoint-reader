@@ -80,6 +80,12 @@ class ActivityManager {
   // Will replace currentActivity and drop all activities on stack
   void replaceActivity(std::unique_ptr<Activity>&& newActivity);
 
+  // Exit and free the current activity and any stacked parents without
+  // entering a replacement (same teardown replaceActivity performs). Used to
+  // reclaim heap before the pre-sleep TRMNL fetch; the caller must follow up
+  // with goToSleep() or a silent restart.
+  void exitAllActivities(const RenderLock& lock);
+
   // goTo... functions are convenient wrapper for replaceActivity()
   void goToFileTransfer();
   void goToSettings();
