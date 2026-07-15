@@ -1,5 +1,4 @@
 #pragma once
-#include <functional>
 #include <string>
 
 /**
@@ -23,11 +22,7 @@ class TrmnlClient {
     NOT_REGISTERED,  // /api/setup rejected the MAC (not registered in the TRMNL account)
     SERVER_ERROR,    // API responded with an error status or unparseable JSON
     IMAGE_ERROR,     // Image download or conversion failed
-    ABORTED,         // Cancelled via the caller's cancel flag
   };
-
-  // Reports coarse fetch progress as a 0-100 percentage
-  using ProgressCallback = std::function<void(uint8_t percent)>;
 
   /**
    * Auto-provision this device: fetch an API key for our MAC address via
@@ -38,10 +33,8 @@ class TrmnlClient {
   /**
    * Fetch the current dashboard image via /api/display and cache it as
    * TrmnlStore::cachedImagePath() (converting PNG to BMP if needed).
-   * When cancelFlag becomes true the fetch is abandoned (checked between
-   * stages and per download chunk). progress, when set, receives 40-100.
    */
-  static Result fetchImageToCache(bool* cancelFlag = nullptr, const ProgressCallback& progress = nullptr);
+  static Result fetchImageToCache();
 
   /** Device MAC address in the AA:BB:CC:DD:EE:FF format the TRMNL API expects. */
   static std::string macAddress();

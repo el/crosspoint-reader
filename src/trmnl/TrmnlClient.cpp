@@ -8,7 +8,6 @@
 #include <PngToBmpConverter.h>
 #include <WiFi.h>
 #include <esp_mac.h>
-#include <esp_wifi.h>
 
 #include <cstdio>
 
@@ -43,15 +42,6 @@ std::string resolveUrl(const std::string& baseUrl, const std::string& url) {
   }
   return url;
 }
-
-// Modem power save delays inbound traffic on some APs badly enough to stall
-// the TLS handshake (TCP connects, but the ServerHello flight never arrives).
-// Disable it for the duration of the API conversation, exactly like
-// OtaUpdater does for firmware downloads, and restore the default after.
-struct WifiFullPowerGuard {
-  WifiFullPowerGuard() { esp_wifi_set_ps(WIFI_PS_NONE); }
-  ~WifiFullPowerGuard() { esp_wifi_set_ps(WIFI_PS_MIN_MODEM); }
-};
 
 // Replace targetPath with srcPath as atomically as SD allows, so a failed
 // fetch never destroys the previously cached image.
@@ -89,7 +79,6 @@ TrmnlClient::Result TrmnlClient::linkDevice() {
     LOG_ERR("TRM", "Link failed: WiFi not connected");
     return NETWORK_ERROR;
   }
-  WifiFullPowerGuard fullPower;
 
   HttpDownloader::Headers headers;
   addCommonHeaders(headers);
@@ -127,12 +116,7 @@ TrmnlClient::Result TrmnlClient::linkDevice() {
   return OK;
 }
 
-TrmnlClient::Result TrmnlClient::fetchImageToCache(bool* cancelFlag, const ProgressCallback& progress) {
-  const auto report = [&progress](const uint8_t percent) {
-    if (progress) progress(percent);
-  };
-  const auto cancelled = [cancelFlag] { return cancelFlag && *cancelFlag; };
-
+TrmnlClient::Result TrmnlClient::fetchImageToCache() {
   if (!TRMNL_STORE.isLinked()) {
     return NO_CREDENTIALS;
   }
@@ -140,8 +124,6 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache(bool* cancelFlag, const Progr
     LOG_ERR("TRM", "Fetch failed: WiFi not connected");
     return NETWORK_ERROR;
   }
-  WifiFullPowerGuard fullPower;
-  report(45);
 
   HttpDownloader::Headers headers;
   addCommonHeaders(headers);
@@ -187,29 +169,15 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache(bool* cancelFlag, const Progr
   body.shrink_to_fit();
   doc.clear();
 
-  if (cancelled()) {
-    return ABORTED;
-  }
-  report(55);
-
   // Keep only the auth headers for the image fetch (matches the stock firmware)
   HttpDownloader::Headers imageHeaders;
   imageHeaders.emplace_back("ID", macAddress());
   imageHeaders.emplace_back("Access-Token", TRMNL_STORE.getApiKey());
-  // Map download bytes onto the 55-90 span of the overall progress
-  const auto downloadProgress = [&report](const size_t downloaded, const size_t total) {
-    if (total > 0) report(static_cast<uint8_t>(55 + (downloaded * 35) / total));
-  };
-  const auto downloadResult = HttpDownloader::downloadToFile(imageUrl, TRMNL_TMP_DOWNLOAD, downloadProgress, cancelFlag,
-                                                             "", "", imageHeaders, IMAGE_TIMEOUT_MS);
-  if (downloadResult == HttpDownloader::ABORTED) {
-    return ABORTED;
-  }
-  if (downloadResult != HttpDownloader::OK) {
+  if (HttpDownloader::downloadToFile(imageUrl, TRMNL_TMP_DOWNLOAD, nullptr, nullptr, "", "", imageHeaders,
+                                     IMAGE_TIMEOUT_MS) != HttpDownloader::OK) {
     LOG_ERR("TRM", "Image download failed");
     return IMAGE_ERROR;
   }
-  report(90);
 
   // Sniff the format from the file magic: pre-signed image URLs often carry
   // query strings, so the extension is unreliable
@@ -260,7 +228,6 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache(bool* cancelFlag, const Progr
   if (!cached) {
     return IMAGE_ERROR;
   }
-  report(100);
   LOG_INF("TRM", "Cached TRMNL image at %s", TrmnlStore::cachedImagePath());
   return OK;
 }
@@ -279,8 +246,6 @@ const char* TrmnlClient::errorString(const Result result) {
       return tr(STR_TRMNL_FETCH_FAILED);
     case IMAGE_ERROR:
       return tr(STR_DOWNLOAD_FAILED);
-    case ABORTED:
-      return tr(STR_CANCEL);
   }
   return tr(STR_TRMNL_FETCH_FAILED);
 }

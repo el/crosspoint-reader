@@ -7,6 +7,7 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <Txt.h>
+#include <WiFi.h>
 #include <Xtc.h>
 
 #include "CrossPointSettings.h"
@@ -16,6 +17,8 @@
 #include "fontIds.h"
 #include "images/Logo120.h"
 #include "images/MoonIcon.h"
+#include "network/WifiAutoConnect.h"
+#include "trmnl/TrmnlClient.h"
 #include "trmnl/TrmnlStore.h"
 
 void SleepActivity::onEnter() {
@@ -334,8 +337,23 @@ void SleepActivity::renderCoverSleepScreen() const {
 }
 
 void SleepActivity::renderTrmnlSleepScreen() const {
-  // The dashboard was already refreshed (or explicitly skipped) by
-  // TrmnlSleepFetch before the sleep was committed; only render the cache.
+  // Refresh the cached dashboard on the way into sleep. Every failure falls
+  // back to the previously cached image, so sleeping never blocks on network
+  // problems for longer than the bounded connect timeout.
+  if (TRMNL_STORE.isLinked()) {
+    constexpr uint32_t TRMNL_WIFI_TIMEOUT_MS = 10000;
+    if (WifiAutoConnect::tryConnectLastNetwork(TRMNL_WIFI_TIMEOUT_MS)) {
+      const auto result = TrmnlClient::fetchImageToCache();
+      if (result != TrmnlClient::OK) {
+        LOG_ERR("SLP", "TRMNL fetch failed (%d), using cached image", static_cast<int>(result));
+      }
+      // Radio off before the slow e-ink refresh; enterDeepSleep() would only
+      // tear it down after this render completes.
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+    }
+  }
+
   HalFile file;
   if (Storage.openFileForRead("SLP", TrmnlStore::cachedImagePath(), file)) {
     Bitmap bitmap(file, true);

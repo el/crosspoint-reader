@@ -170,14 +170,6 @@ void ActivityManager::exitActivity(const RenderLock& lock) {
   }
 }
 
-void ActivityManager::exitAllActivities(const RenderLock& lock) {
-  exitActivity(lock);
-  while (!stackActivities.empty()) {
-    stackActivities.back()->onExit();
-    stackActivities.pop_back();
-  }
-}
-
 void ActivityManager::replaceActivity(std::unique_ptr<Activity>&& newActivity) {
   // Note: no lock here, this is usually called by loop() and we may run into deadlock
   if (currentActivity) {

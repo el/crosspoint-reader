@@ -32,7 +32,6 @@
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "images/LoadingIcon.h"
-#include "trmnl/TrmnlSleepFetch.h"
 #include "trmnl/TrmnlStore.h"
 #include "util/ButtonNavigator.h"
 #include "util/ScreenshotUtil.h"
@@ -196,33 +195,7 @@ static bool loadSleepFrameBuffer() {
 // Enter deep sleep mode
 void enterDeepSleep(bool fromTimeout = false) {
   HalPowerManager::Lock powerLock;  // Ensure we are at normal CPU frequency for sleep preparation
-
-  const bool wasReaderActivity = activityManager.isReaderActivity();
-
-  // TRMNL sleep screens refresh the dashboard before we commit to sleeping,
-  // with Cancel (stay awake) and Skip (sleep with the cached image) options.
-  // The outgoing activity is torn down FIRST: the wolfSSL handshake needs
-  // ~40KB of heap and fails with MEMORY_E while the activity is resident.
-  // Cancelling therefore silently restarts back into the reader/home (the
-  // same recovery path WiFi activities use on exit) instead of returning to
-  // the already-destroyed activity.
-  if (TrmnlSleepFetch::shouldRun()) {
-    {
-      RenderLock lock;
-      activityManager.exitAllActivities(lock);  // onExit() saves reading progress
-    }
-    if (TrmnlSleepFetch::run(renderer, mappedInputManager) == TrmnlSleepFetch::Result::CANCELLED) {
-      waitForPowerRelease();  // a still-held power button must not re-trigger sleep
-      if (wasReaderActivity) {
-        silentRestartToReader();
-      } else {
-        silentRestart();
-      }
-      return;  // not reached: silentRestart() ends in ESP.restart()
-    }
-  }
-
-  APP_STATE.lastSleepFromReader = wasReaderActivity;
+  APP_STATE.lastSleepFromReader = activityManager.isReaderActivity();
 
   const bool isQuickResumeSleep =
       SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::QUICK_RESUME ||
