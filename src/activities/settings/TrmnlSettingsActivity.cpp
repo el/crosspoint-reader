@@ -12,9 +12,22 @@
 #include "trmnl/TrmnlStore.h"
 
 namespace {
-constexpr int MENU_ITEMS = 4;
+constexpr int MENU_ITEMS = 5;
 const StrId menuNames[MENU_ITEMS] = {StrId::STR_TRMNL_SERVER_URL, StrId::STR_TRMNL_MAC_ID, StrId::STR_TRMNL_LINK_DEVICE,
-                                     StrId::STR_TRMNL_FETCH_NOW};
+                                     StrId::STR_TRMNL_FETCH_NOW, StrId::STR_TRMNL_REFRESH_INTERVAL};
+
+// Dashboard mode countdown length; kept in sync with TrmnlStore::REFRESH_INTERVAL_OPTIONS
+const StrId refreshIntervalLabels[TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT] = {
+    StrId::STR_TRMNL_INTERVAL_3_MIN, StrId::STR_TRMNL_INTERVAL_5_MIN, StrId::STR_TRMNL_INTERVAL_10_MIN,
+    StrId::STR_TRMNL_INTERVAL_15_MIN, StrId::STR_TRMNL_INTERVAL_30_MIN};
+
+int refreshIntervalIndex() {
+  const uint8_t minutes = TRMNL_STORE.getRefreshIntervalMinutes();
+  for (uint8_t i = 0; i < TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT; i++) {
+    if (TrmnlStore::REFRESH_INTERVAL_OPTIONS[i] == minutes) return i;
+  }
+  return 1;  // REFRESH_INTERVAL_OPTIONS[1] == 5, the default
+}
 }  // namespace
 
 void TrmnlSettingsActivity::onEnter() {
@@ -27,6 +40,8 @@ void TrmnlSettingsActivity::onEnter() {
 void TrmnlSettingsActivity::onExit() { Activity::onExit(); }
 
 void TrmnlSettingsActivity::loop() {
+  if (optionPopup.handleInput(mappedInput, [this] { requestUpdate(); })) return;
+
   if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
     finish();
     return;
@@ -92,10 +107,20 @@ void TrmnlSettingsActivity::handleSelection() {
     startActivityForResult(
         std::make_unique<TrmnlActionActivity>(renderer, mappedInput, TrmnlActionActivity::Mode::FETCH),
         [this](const ActivityResult&) { requestUpdate(); });
+  } else if (selectedIndex == 4) {
+    // Dashboard mode refresh interval
+    optionPopup.show(StrId::STR_TRMNL_REFRESH_INTERVAL, refreshIntervalLabels,
+                     TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT, refreshIntervalIndex(), [](int idx) {
+                       TRMNL_STORE.setRefreshIntervalMinutes(TrmnlStore::REFRESH_INTERVAL_OPTIONS[idx]);
+                       TRMNL_STORE.saveToFile();
+                     });
+    requestUpdate();
   }
 }
 
 void TrmnlSettingsActivity::render(RenderLock&&) {
+  if (optionPopup.processRender(renderer, mappedInput)) return;
+
   renderer.clearScreen();
 
   const auto& metrics = UITheme::getInstance().getMetrics();
@@ -124,6 +149,8 @@ void TrmnlSettingsActivity::render(RenderLock&&) {
           return TRMNL_STORE.getFriendlyId().empty() ? std::string(tr(STR_TRMNL_LINKED)) : TRMNL_STORE.getFriendlyId();
         } else if (index == 3) {
           return TRMNL_STORE.isLinked() ? std::string("") : std::string("[") + tr(STR_SET_CREDENTIALS_FIRST) + "]";
+        } else if (index == 4) {
+          return std::string(I18N.get(refreshIntervalLabels[refreshIntervalIndex()]));
         }
         return std::string(tr(STR_NOT_SET));
       },

@@ -28,6 +28,7 @@ bool TrmnlStore::saveToFile() const {
   doc["apiKey_obf"] = obfuscation::obfuscateToBase64(apiKey);
   doc["friendlyId"] = friendlyId;
   doc["macId"] = customMacId;
+  doc["refreshIntervalMinutes"] = refreshIntervalMinutes;
 
   String json;
   serializeJson(doc, json);
@@ -55,6 +56,7 @@ bool TrmnlStore::loadFromFile() {
   serverUrl = doc["serverUrl"] | std::string("");
   friendlyId = doc["friendlyId"] | std::string("");
   customMacId = doc["macId"] | std::string("");
+  setRefreshIntervalMinutes(doc["refreshIntervalMinutes"] | refreshIntervalMinutes);
 
   bool ok = false;
   apiKey = obfuscation::deobfuscateFromBase64(doc["apiKey_obf"] | "", &ok);
@@ -114,6 +116,16 @@ bool TrmnlStore::setCustomMacId(const std::string& mac) {
 void TrmnlStore::setServerUrl(const std::string& url) {
   serverUrl = url;
   LOG_DBG("TRM", "Set server URL: %s", url.empty() ? "(default)" : url.c_str());
+}
+
+void TrmnlStore::setRefreshIntervalMinutes(const uint8_t minutes) {
+  for (uint8_t i = 0; i < REFRESH_INTERVAL_OPTIONS_COUNT; i++) {
+    if (REFRESH_INTERVAL_OPTIONS[i] == minutes) {
+      refreshIntervalMinutes = minutes;
+      return;
+    }
+  }
+  LOG_ERR("TRM", "Invalid refresh interval: %u min", minutes);
 }
 
 std::string TrmnlStore::getBaseUrl() const {

@@ -1,11 +1,13 @@
 #pragma once
 
 #include "activities/Activity.h"
+#include "components/OptionPopup.h"
 #include "util/ButtonNavigator.h"
 
 /**
  * Submenu for TRMNL settings.
- * Shows server URL, device MAC, link (auto-provision) and fetch options.
+ * Shows server URL, device MAC, link (auto-provision), fetch, and the
+ * dashboard mode refresh interval.
  */
 class TrmnlSettingsActivity final : public Activity {
  public:
@@ -19,6 +21,7 @@ class TrmnlSettingsActivity final : public Activity {
 
  private:
   ButtonNavigator buttonNavigator;
+  OptionPopup optionPopup;
 
   size_t selectedIndex = 0;
 

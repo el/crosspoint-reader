@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <string>
 
 /**
@@ -14,6 +15,9 @@ class TrmnlStore {
   std::string apiKey;       // Device API key (from /api/setup or manual entry)
   std::string friendlyId;   // Friendly device ID assigned by the server
   std::string customMacId;  // Custom MAC for the ID header (empty = hardware MAC)
+  // Dashboard mode refresh interval (minutes). Always one of REFRESH_INTERVAL_OPTIONS;
+  // an invalid value found on disk falls back to the default.
+  uint8_t refreshIntervalMinutes = 5;
 
   // Private constructor for singleton
   TrmnlStore() = default;
@@ -54,6 +58,13 @@ class TrmnlStore {
 
   // Get base URL for API calls (with http:// normalization if no protocol, falls back to default)
   std::string getBaseUrl() const;
+
+  // Dashboard mode refresh interval, in minutes (TrmnlDashboardActivity). Only
+  // values in REFRESH_INTERVAL_OPTIONS are accepted; anything else is ignored.
+  static constexpr uint8_t REFRESH_INTERVAL_OPTIONS[] = {3, 5, 10, 15, 30};
+  static constexpr uint8_t REFRESH_INTERVAL_OPTIONS_COUNT = 5;
+  void setRefreshIntervalMinutes(uint8_t minutes);
+  uint8_t getRefreshIntervalMinutes() const { return refreshIntervalMinutes; }
 
   // Path of the cached TRMNL image rendered by the sleep screen
   static const char* cachedImagePath();

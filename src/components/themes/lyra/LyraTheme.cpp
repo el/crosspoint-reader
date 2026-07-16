@@ -21,6 +21,7 @@
 #include "components/icons/folder.h"
 #include "components/icons/folder24.h"
 #include "components/icons/hotspot.h"
+#include "components/icons/image.h"
 #include "components/icons/image24.h"
 #include "components/icons/library.h"
 #include "components/icons/recent.h"
@@ -61,6 +62,8 @@ const uint8_t* iconForName(UIIcon icon, int size) {
     switch (icon) {
       case UIIcon::Folder:
         return FolderIcon;
+      case UIIcon::Image:
+        return ImageIcon;
       case UIIcon::Book:
         return BookIcon;
       case UIIcon::Recent:

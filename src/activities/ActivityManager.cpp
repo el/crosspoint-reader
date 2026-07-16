@@ -17,6 +17,7 @@
 #include "reader/ReaderActivity.h"
 #include "settings/OpdsServerListActivity.h"
 #include "settings/SettingsActivity.h"
+#include "trmnl/TrmnlDashboardActivity.h"
 #include "util/FullScreenMessageActivity.h"
 
 static portMUX_TYPE activityManagerSpinlock = portMUX_INITIALIZER_UNLOCKED;
@@ -208,8 +209,13 @@ void ActivityManager::goToBrowser() {
   }
 }
 
+void ActivityManager::goToTrmnlDashboard() {
+  replaceActivity(std::make_unique<TrmnlDashboardActivity>(renderer, mappedInput));
+}
+
 void ActivityManager::goToReader(std::string path, const bool allowFastInitialRefresh) {
   replaceActivity(std::make_unique<ReaderActivity>(renderer, mappedInput, std::move(path), allowFastInitialRefresh));
+}
 }
 
 void ActivityManager::goToSleep(bool fromTimeout) {
@@ -232,6 +238,8 @@ void ActivityManager::goHome(HomeMenuItem initialMenuItem) {
       initialMenuItem = HomeMenuItem::RECENTS;
     } else if (activityName == "OpdsBookBrowser") {
       initialMenuItem = HomeMenuItem::OPDS_BROWSER;
+    } else if (activityName == "TrmnlDashboard") {
+      initialMenuItem = HomeMenuItem::TRMNL;
     } else if (activityName == "CrossPointWebServer") {
       initialMenuItem = HomeMenuItem::FILE_TRANSFER;
     } else if (activityName == "Settings") {
