@@ -262,9 +262,27 @@ void HomeActivity::loop() {
       metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size();
   const int renderedMenuCount =
       menuCount - (metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size()));
+
+  int effectiveRowHeight = metrics.menuRowHeight;
+  int effectiveMenuSpacing = metrics.menuSpacing;
+  const int hintBarHeight = mappedInput.hasTouch() ? 0 : metrics.buttonHintsHeight;
+  const int availHeight = renderer.getScreenHeight() - menuTop - hintBarHeight;
+  if (renderedMenuCount > 1 && availHeight > 0) {
+    int totalNeeded = renderedMenuCount * effectiveRowHeight + (renderedMenuCount - 1) * effectiveMenuSpacing;
+    if (totalNeeded > availHeight) {
+      int excess = totalNeeded - availHeight;
+      int spacingReduction = std::min(effectiveMenuSpacing, (excess + renderedMenuCount - 2) / (renderedMenuCount - 1));
+      effectiveMenuSpacing -= spacingReduction;
+      totalNeeded = renderedMenuCount * effectiveRowHeight + (renderedMenuCount - 1) * effectiveMenuSpacing;
+      if (totalNeeded > availHeight) {
+        effectiveRowHeight = std::max(20, (availHeight - (renderedMenuCount - 1) * effectiveMenuSpacing) / renderedMenuCount);
+      }
+    }
+  }
+
   int menuRow = -1;
-  const auto menuTouch = mappedInput.rowTouch(menuRow, menuTop, metrics.menuRowHeight + metrics.menuSpacing,
-                                              renderedMenuCount, 0, INT32_MAX, metrics.menuRowHeight);
+  const auto menuTouch = mappedInput.rowTouch(menuRow, menuTop, effectiveRowHeight + effectiveMenuSpacing,
+                                              renderedMenuCount, 0, INT32_MAX, effectiveRowHeight);
   if (menuTouch != MappedInputManager::RowTouch::None) {
     const int touchedIndex =
         metrics.homeContinueReadingInMenu ? menuRow : menuRow + static_cast<int>(recentBooks.size());
@@ -331,11 +349,13 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin(), Book);
   }
 
+  const int menuTop = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
+  const int hintBarHeight = mappedInput.hasTouch() ? 0 : metrics.buttonHintsHeight;
+  const int availableMenuHeight = pageHeight - menuTop - hintBarHeight;
+
   GUI.drawButtonMenu(
       renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing +
-                         metrics.homeMenuTopOffset + metrics.buttonHintsHeight)},
+      Rect{0, menuTop, pageWidth, availableMenuHeight},
       static_cast<int>(menuItems.size()),
       metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size(),
       [&menuItems](int index) { return std::string(menuItems[index]); },
