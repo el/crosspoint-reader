@@ -358,10 +358,10 @@ void SleepActivity::renderTrmnlSleepScreen() const {
   if (Storage.openFileForRead("SLP", TrmnlStore::cachedImagePath(), file)) {
     Bitmap bitmap(file, true);
     if (bitmap.parseHeaders() == BmpReaderError::Ok) {
-      // TRMNL dashboards are landscape (800x480, exactly the panel size), so
-      // render 1:1 in the native landscape orientation regardless of the
-      // reader orientation.
-      renderer.setOrientation(GfxRenderer::Orientation::LandscapeCounterClockwise);
+      // The dashboard is fetched and rendered in the orientation configured in
+      // TRMNL settings (default: the panel's native landscape), regardless of
+      // the reader orientation.
+      renderer.setOrientation(static_cast<GfxRenderer::Orientation>(TRMNL_STORE.getOrientation()));
       renderBitmapSleepScreen(bitmap);
       renderer.setOrientation(GfxRenderer::Orientation::Portrait);
       return;

@@ -3,11 +3,12 @@
 
 /**
  * Full-screen TRMNL dashboard mode, launched from the home screen when the
- * device is linked. Fetches the current dashboard image, renders it 1:1 in
- * landscape, then counts down the user-configured refresh interval (5 dots,
- * bottom-left, one fifth of the interval per dot) before fetching the next
- * image. WiFi is turned off between fetches to preserve battery and no
- * button hints are drawn; Back or Confirm exits to the home screen.
+ * device is linked. Fetches the current dashboard image, renders it in the
+ * orientation configured in TrmnlStore, then counts down the user-configured
+ * refresh interval (5 dots, bottom-left, one fifth of the interval per dot)
+ * before fetching the next image. WiFi is turned off between fetches to
+ * preserve battery and no button hints are drawn; the next/previous buttons
+ * fetch a new image immediately, Back or Confirm exits to the home screen.
  */
 class TrmnlDashboardActivity final : public Activity {
  public:
@@ -30,12 +31,26 @@ class TrmnlDashboardActivity final : public Activity {
   enum State { FETCHING, SHOWING };
 
   void fetchImage();
+  // Abandons the rest of the countdown so the next loop() iteration fetches,
+  // announcing it with the fetch splash
+  void startFetch();
+  void dotOrigin(int index, int& outX, int& outY) const;
   void drawCountdownDots() const;
+  void clearDotsFromGrayPlane() const;
+  // Paints the cached image (plus the countdown dots) into the framebuffer and
+  // pushes it to the panel, running the 4-level grayscale pipeline when the
+  // cached BMP carries more than one bit per pixel. Returns false when the
+  // cached image is missing or unreadable.
+  bool drawCachedImage(int pageWidth, int pageHeight);
 
   State state = FETCHING;
-  bool usedWifi = false;    // A fetch cycle ran; silentRestart() on exit
-  bool imageShown = false;  // First image render done (gates the fetch splash)
-  bool fullRedraw = true;   // Redraw the bitmap from SD vs dots-only update
+  bool usedWifi = false;  // A fetch cycle ran; silentRestart() on exit
+  // Show the full-screen "fetching" splash for the fetch that is about to run.
+  // Set for the first fetch and for button-triggered ones, where the user needs
+  // to see that the press was registered; the automatic refreshes at the end of
+  // the countdown leave the current dashboard on screen instead.
+  bool showFetchSplash = true;
+  bool fullRedraw = true;  // Redraw the bitmap from SD vs dots-only update
   // Interval between dot ticks, i.e. 1/COUNTDOWN_DOTS of the configured
   // refresh interval. Read from TRMNL_STORE at the start of each fetch cycle
   // so a mid-countdown setting change takes effect on the next fetch.

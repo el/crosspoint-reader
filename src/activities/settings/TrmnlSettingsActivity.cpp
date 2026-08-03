@@ -12,14 +12,24 @@
 #include "trmnl/TrmnlStore.h"
 
 namespace {
-constexpr int MENU_ITEMS = 5;
-const StrId menuNames[MENU_ITEMS] = {StrId::STR_TRMNL_SERVER_URL, StrId::STR_TRMNL_MAC_ID, StrId::STR_TRMNL_LINK_DEVICE,
-                                     StrId::STR_TRMNL_FETCH_NOW, StrId::STR_TRMNL_REFRESH_INTERVAL};
+constexpr int MENU_ITEMS = 7;
+const StrId menuNames[MENU_ITEMS] = {StrId::STR_TRMNL_SERVER_URL,       StrId::STR_TRMNL_MAC_ID,
+                                     StrId::STR_TRMNL_LINK_DEVICE,      StrId::STR_TRMNL_FETCH_NOW,
+                                     StrId::STR_TRMNL_REFRESH_INTERVAL, StrId::STR_TRMNL_ORIENTATION,
+                                     StrId::STR_TRMNL_RENDER_MODE};
 
 // Dashboard mode countdown length; kept in sync with TrmnlStore::REFRESH_INTERVAL_OPTIONS
 const StrId refreshIntervalLabels[TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT] = {
     StrId::STR_TRMNL_INTERVAL_3_MIN, StrId::STR_TRMNL_INTERVAL_5_MIN, StrId::STR_TRMNL_INTERVAL_10_MIN,
     StrId::STR_TRMNL_INTERVAL_15_MIN, StrId::STR_TRMNL_INTERVAL_30_MIN};
+
+// Indexed by the stored orientation, i.e. GfxRenderer::Orientation order
+const StrId orientationLabels[TrmnlStore::ORIENTATION_OPTIONS_COUNT] = {
+    StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_ORIENTATION_INVERTED, StrId::STR_LANDSCAPE_CCW};
+
+// Indexed by TrmnlStore::RENDER_MODE_*
+const StrId renderModeLabels[TrmnlStore::RENDER_MODE_OPTIONS_COUNT] = {StrId::STR_GRAYSCALE, StrId::STR_BLACK_AND_WHITE,
+                                                                       StrId::STR_INVERTED};
 
 int refreshIntervalIndex() {
   const uint8_t minutes = TRMNL_STORE.getRefreshIntervalMinutes();
@@ -115,6 +125,25 @@ void TrmnlSettingsActivity::handleSelection() {
                        TRMNL_STORE.saveToFile();
                      });
     requestUpdate();
+  } else if (selectedIndex == 5) {
+    // Dashboard/sleep-screen orientation. Also decides the image size asked of
+    // the TRMNL server, so the next fetch picks the new aspect ratio up.
+    optionPopup.show(StrId::STR_TRMNL_ORIENTATION, orientationLabels, TrmnlStore::ORIENTATION_OPTIONS_COUNT,
+                     TRMNL_STORE.getOrientation(), [](int idx) {
+                       TRMNL_STORE.setOrientation(static_cast<uint8_t>(idx));
+                       TRMNL_STORE.saveToFile();
+                     });
+    requestUpdate();
+  } else if (selectedIndex == 6) {
+    // How the dashboard paints the cached image. Scoped to dashboard mode: the
+    // TRMNL sleep screen goes through the shared cover renderer, which already
+    // has its own filter setting (SETTINGS.sleepScreenCoverFilter).
+    optionPopup.show(StrId::STR_TRMNL_RENDER_MODE, renderModeLabels, TrmnlStore::RENDER_MODE_OPTIONS_COUNT,
+                     TRMNL_STORE.getRenderMode(), [](int idx) {
+                       TRMNL_STORE.setRenderMode(static_cast<uint8_t>(idx));
+                       TRMNL_STORE.saveToFile();
+                     });
+    requestUpdate();
   }
 }
 
@@ -151,6 +180,10 @@ void TrmnlSettingsActivity::render(RenderLock&&) {
           return TRMNL_STORE.isLinked() ? std::string("") : std::string("[") + tr(STR_SET_CREDENTIALS_FIRST) + "]";
         } else if (index == 4) {
           return std::string(I18N.get(refreshIntervalLabels[refreshIntervalIndex()]));
+        } else if (index == 5) {
+          return std::string(I18N.get(orientationLabels[TRMNL_STORE.getOrientation()]));
+        } else if (index == 6) {
+          return std::string(I18N.get(renderModeLabels[TRMNL_STORE.getRenderMode()]));
         }
         return std::string(tr(STR_NOT_SET));
       },

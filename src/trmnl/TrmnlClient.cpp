@@ -43,6 +43,18 @@ std::string resolveUrl(const std::string& baseUrl, const std::string& url) {
   return url;
 }
 
+// Dashboard dimensions for the configured orientation. The panel is natively
+// landscape (800x480); a portrait orientation asks the server for the
+// transposed size so the dashboard is authored for the rotated screen instead
+// of being letterboxed into it.
+void orientedDisplaySize(uint16_t& outWidth, uint16_t& outHeight) {
+  const uint16_t panelWidth = display.getDisplayWidth();
+  const uint16_t panelHeight = display.getDisplayHeight();
+  const bool portrait = TRMNL_STORE.isPortraitOrientation();
+  outWidth = portrait ? panelHeight : panelWidth;
+  outHeight = portrait ? panelWidth : panelHeight;
+}
+
 // Replace targetPath with srcPath as atomically as SD allows, so a failed
 // fetch never destroys the previously cached image.
 bool replaceFile(const char* srcPath, const char* targetPath) {
@@ -128,11 +140,14 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache() {
   HttpDownloader::Headers headers;
   addCommonHeaders(headers);
   headers.emplace_back("Access-Token", TRMNL_STORE.getApiKey());
+  uint16_t imageWidth = 0;
+  uint16_t imageHeight = 0;
+  orientedDisplaySize(imageWidth, imageHeight);
   {
     char buf[12];
-    snprintf(buf, sizeof(buf), "%u", display.getDisplayWidth());
+    snprintf(buf, sizeof(buf), "%u", imageWidth);
     headers.emplace_back("Width", buf);
-    snprintf(buf, sizeof(buf), "%u", display.getDisplayHeight());
+    snprintf(buf, sizeof(buf), "%u", imageHeight);
     headers.emplace_back("Height", buf);
     snprintf(buf, sizeof(buf), "%d", static_cast<int>(WiFi.RSSI()));
     headers.emplace_back("RSSI", buf);
@@ -205,9 +220,10 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache() {
       HalFile bmpFile;
       if (Storage.openFileForRead("TRM", TRMNL_TMP_DOWNLOAD, pngFile) &&
           Storage.openFileForWrite("TRM", TRMNL_TMP_BMP, bmpFile)) {
-        // Landscape panel dimensions: TRMNL images are 800x480, so this is 1:1
-        converted = PngToBmpConverter::pngFileToBmpStreamWithSize(pngFile, bmpFile, display.getDisplayWidth(),
-                                                                  display.getDisplayHeight());
+        // Same size the image was requested at, so a server that honours the
+        // Width/Height headers converts 1:1 and one that ignores them gets
+        // scaled to fit the configured orientation
+        converted = PngToBmpConverter::pngFileToBmpStreamWithSize(pngFile, bmpFile, imageWidth, imageHeight);
       }
       // Close before remove/rename on the same paths
       pngFile.close();

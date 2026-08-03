@@ -29,6 +29,8 @@ bool TrmnlStore::saveToFile() const {
   doc["friendlyId"] = friendlyId;
   doc["macId"] = customMacId;
   doc["refreshIntervalMinutes"] = refreshIntervalMinutes;
+  doc["orientation"] = orientation;
+  doc["renderMode"] = renderMode;
 
   String json;
   serializeJson(doc, json);
@@ -57,6 +59,8 @@ bool TrmnlStore::loadFromFile() {
   friendlyId = doc["friendlyId"] | std::string("");
   customMacId = doc["macId"] | std::string("");
   setRefreshIntervalMinutes(doc["refreshIntervalMinutes"] | refreshIntervalMinutes);
+  setOrientation(doc["orientation"] | orientation);
+  setRenderMode(doc["renderMode"] | renderMode);
 
   bool ok = false;
   apiKey = obfuscation::deobfuscateFromBase64(doc["apiKey_obf"] | "", &ok);
@@ -126,6 +130,22 @@ void TrmnlStore::setRefreshIntervalMinutes(const uint8_t minutes) {
     }
   }
   LOG_ERR("TRM", "Invalid refresh interval: %u min", minutes);
+}
+
+void TrmnlStore::setOrientation(const uint8_t value) {
+  if (value >= ORIENTATION_OPTIONS_COUNT) {
+    LOG_ERR("TRM", "Invalid orientation: %u", value);
+    return;
+  }
+  orientation = value;
+}
+
+void TrmnlStore::setRenderMode(const uint8_t value) {
+  if (value >= RENDER_MODE_OPTIONS_COUNT) {
+    LOG_ERR("TRM", "Invalid render mode: %u", value);
+    return;
+  }
+  renderMode = value;
 }
 
 std::string TrmnlStore::getBaseUrl() const {

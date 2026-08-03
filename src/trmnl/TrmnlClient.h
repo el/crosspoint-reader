@@ -8,7 +8,8 @@
  *   /api/setup    ID: <mac>                          -> {status, api_key, friendly_id}
  *   /api/display  ID: <mac>, Access-Token: <api_key> -> {status, image_url, filename, refresh_rate}
  *
- * The display image (800x480 PNG or BMP) is downloaded and cached as a BMP on
+ * The display image (PNG or BMP, requested at the panel size for the
+ * orientation configured in TrmnlStore) is downloaded and cached as a BMP on
  * the SD card for the sleep screen to render without a network connection.
  *
  * All calls are blocking and require an already-established WiFi connection.

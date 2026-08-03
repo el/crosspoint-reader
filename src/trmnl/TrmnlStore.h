@@ -18,6 +18,11 @@ class TrmnlStore {
   // Dashboard mode refresh interval (minutes). Always one of REFRESH_INTERVAL_OPTIONS;
   // an invalid value found on disk falls back to the default.
   uint8_t refreshIntervalMinutes = 5;
+  // Orientation the dashboard image is requested and rendered in. Defaults to
+  // the panel's native landscape, which is what TRMNL dashboards are authored
+  // for.
+  uint8_t orientation = ORIENTATION_LANDSCAPE_CCW;
+  uint8_t renderMode = RENDER_MODE_GRAYSCALE;
 
   // Private constructor for singleton
   TrmnlStore() = default;
@@ -65,6 +70,35 @@ class TrmnlStore {
   static constexpr uint8_t REFRESH_INTERVAL_OPTIONS_COUNT = 5;
   void setRefreshIntervalMinutes(uint8_t minutes);
   uint8_t getRefreshIntervalMinutes() const { return refreshIntervalMinutes; }
+
+  // Orientation the dashboard image is fetched and rendered in, mirroring
+  // GfxRenderer::Orientation's declared order. Stored as a plain uint8_t (not
+  // the renderer enum) so the store stays free of a renderer dependency and
+  // round-trips through JSON unchanged; callers cast on use. Out-of-range
+  // values are rejected. Portrait orientations swap the width/height the TRMNL
+  // API is asked for, so the server can render a portrait dashboard.
+  static constexpr uint8_t ORIENTATION_PORTRAIT = 0;
+  static constexpr uint8_t ORIENTATION_LANDSCAPE_CW = 1;
+  static constexpr uint8_t ORIENTATION_PORTRAIT_INVERTED = 2;
+  static constexpr uint8_t ORIENTATION_LANDSCAPE_CCW = 3;
+  static constexpr uint8_t ORIENTATION_OPTIONS_COUNT = 4;
+  void setOrientation(uint8_t value);
+  uint8_t getOrientation() const { return orientation; }
+  bool isPortraitOrientation() const {
+    return orientation == ORIENTATION_PORTRAIT || orientation == ORIENTATION_PORTRAIT_INVERTED;
+  }
+
+  // How TrmnlDashboardActivity paints the cached image. Grayscale drives the
+  // panel's 4 levels, which costs three extra passes over the BMP and a slower
+  // refresh; the two single-pass modes collapse everything non-white to black,
+  // which is faster and is all a 1-bit dashboard can show anyway. Out-of-range
+  // values are rejected.
+  static constexpr uint8_t RENDER_MODE_GRAYSCALE = 0;
+  static constexpr uint8_t RENDER_MODE_BW = 1;
+  static constexpr uint8_t RENDER_MODE_BW_INVERTED = 2;
+  static constexpr uint8_t RENDER_MODE_OPTIONS_COUNT = 3;
+  void setRenderMode(uint8_t value);
+  uint8_t getRenderMode() const { return renderMode; }
 
   // Path of the cached TRMNL image rendered by the sleep screen
   static const char* cachedImagePath();
