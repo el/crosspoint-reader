@@ -1348,6 +1348,12 @@ void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, con
         drawPixel(screenX, screenY, false);
       } else if (renderMode == GRAYSCALE_LSB && val == 1) {
         drawPixel(screenX, screenY, false);
+        // Absolute modes: the plane bit *is* the level bit, so black (0) leaves
+        // both planes cleared and white (3) sets both.
+      } else if (renderMode == GRAYSCALE_ABS_MSB && (val & 0x2)) {
+        drawPixel(screenX, screenY, false);
+      } else if (renderMode == GRAYSCALE_ABS_LSB && (val & 0x1)) {
+        drawPixel(screenX, screenY, false);
       }
     }
   }
@@ -2079,7 +2085,7 @@ void GfxRenderer::copyGrayscaleLsbBuffers() const { display.copyGrayscaleLsbBuff
 
 void GfxRenderer::copyGrayscaleMsbBuffers() const { display.copyGrayscaleMsbBuffers(frameBuffer); }
 
-void GfxRenderer::displayGrayBuffer() const { display.displayGrayBuffer(fadingFix); }
+void GfxRenderer::displayGrayBuffer(const bool factoryMode) const { display.displayGrayBuffer(fadingFix, factoryMode); }
 
 void GfxRenderer::writeGrayscalePlaneStrip(bool lsbPlane, const uint8_t* scratch, int yStart, int numRows) const {
   // Guard the uint16_t casts below: a negative would wrap to a huge length.

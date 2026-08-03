@@ -27,9 +27,25 @@ const StrId refreshIntervalLabels[TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT] = 
 const StrId orientationLabels[TrmnlStore::ORIENTATION_OPTIONS_COUNT] = {
     StrId::STR_PORTRAIT, StrId::STR_LANDSCAPE_CW, StrId::STR_ORIENTATION_INVERTED, StrId::STR_LANDSCAPE_CCW};
 
-// Indexed by TrmnlStore::RENDER_MODE_*
-const StrId renderModeLabels[TrmnlStore::RENDER_MODE_OPTIONS_COUNT] = {StrId::STR_GRAYSCALE, StrId::STR_BLACK_AND_WHITE,
-                                                                       StrId::STR_INVERTED};
+// The stored render mode values are append-only, so the popup needs its own
+// order to keep the grayscale variants together.
+constexpr uint8_t renderModeOrder[TrmnlStore::RENDER_MODE_OPTIONS_COUNT] = {TrmnlStore::RENDER_MODE_GRAYSCALE,
+                                                                            TrmnlStore::RENDER_MODE_GRAYSCALE_ALT,
+                                                                            TrmnlStore::RENDER_MODE_GRAYSCALE_OEM,
+                                                                            TrmnlStore::RENDER_MODE_GRAYSCALE_OEM_INV,
+                                                                            TrmnlStore::RENDER_MODE_BW,
+                                                                            TrmnlStore::RENDER_MODE_BW_INVERTED};
+const StrId renderModeLabels[TrmnlStore::RENDER_MODE_OPTIONS_COUNT] = {
+    StrId::STR_GRAYSCALE,         StrId::STR_GRAYSCALE_ALT,   StrId::STR_GRAYSCALE_OEM,
+    StrId::STR_GRAYSCALE_OEM_INV, StrId::STR_BLACK_AND_WHITE, StrId::STR_INVERTED};
+
+int renderModeIndex() {
+  const uint8_t mode = TRMNL_STORE.getRenderMode();
+  for (uint8_t i = 0; i < TrmnlStore::RENDER_MODE_OPTIONS_COUNT; i++) {
+    if (renderModeOrder[i] == mode) return i;
+  }
+  return 0;
+}
 
 int refreshIntervalIndex() {
   const uint8_t minutes = TRMNL_STORE.getRefreshIntervalMinutes();
@@ -139,8 +155,8 @@ void TrmnlSettingsActivity::handleSelection() {
     // TRMNL sleep screen goes through the shared cover renderer, which already
     // has its own filter setting (SETTINGS.sleepScreenCoverFilter).
     optionPopup.show(StrId::STR_TRMNL_RENDER_MODE, renderModeLabels, TrmnlStore::RENDER_MODE_OPTIONS_COUNT,
-                     TRMNL_STORE.getRenderMode(), [](int idx) {
-                       TRMNL_STORE.setRenderMode(static_cast<uint8_t>(idx));
+                     renderModeIndex(), [](int idx) {
+                       TRMNL_STORE.setRenderMode(renderModeOrder[idx]);
                        TRMNL_STORE.saveToFile();
                      });
     requestUpdate();
@@ -183,7 +199,7 @@ void TrmnlSettingsActivity::render(RenderLock&&) {
         } else if (index == 5) {
           return std::string(I18N.get(orientationLabels[TRMNL_STORE.getOrientation()]));
         } else if (index == 6) {
-          return std::string(I18N.get(renderModeLabels[TRMNL_STORE.getRenderMode()]));
+          return std::string(I18N.get(renderModeLabels[renderModeIndex()]));
         }
         return std::string(tr(STR_NOT_SET));
       },

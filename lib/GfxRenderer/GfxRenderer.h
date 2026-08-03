@@ -28,7 +28,14 @@ enum Color : uint8_t { Clear = 0x00, White = 0x01, LightGray = 0x05, DarkGray = 
 
 class GfxRenderer {
  public:
-  enum RenderMode { BW, GRAYSCALE_LSB, GRAYSCALE_MSB };
+  // GRAYSCALE_LSB/MSB build the *differential* planes the default gray LUT
+  // expects: a mark means "nudge this pixel off the BW base it was painted
+  // with", so black and white are left unmarked in both planes.
+  // GRAYSCALE_ABS_LSB/MSB instead write the pixel's plain 2-bit level, which is
+  // what the OEM factory waveform (displayGrayBuffer(factoryMode=true)) drives
+  // from scratch — no BW base involved. Only drawBitmap honours the absolute
+  // modes; DirectPixelWriter ignores them.
+  enum RenderMode { BW, GRAYSCALE_LSB, GRAYSCALE_MSB, GRAYSCALE_ABS_LSB, GRAYSCALE_ABS_MSB };
 
   // Logical screen orientation from the perspective of callers
   enum Orientation {
@@ -288,7 +295,9 @@ class GfxRenderer {
   void displayGrayscaleBase(HalDisplay::RefreshMode fallback = HalDisplay::HALF_REFRESH) const;
   void copyGrayscaleLsbBuffers() const;
   void copyGrayscaleMsbBuffers() const;
-  void displayGrayBuffer() const;
+  // factoryMode drives the OEM absolute 4-level waveform; it needs planes built
+  // with GRAYSCALE_ABS_LSB/MSB and no preceding displayGrayscaleBase().
+  void displayGrayBuffer(bool factoryMode = false) const;
 
   // Tiled grayscale (X4): stream one band of a plane straight to controller RAM
   // from `scratch` (panelWidthBytes * numRows, physical rows [yStart, yStart+

@@ -1,6 +1,8 @@
 #pragma once
 #include "activities/Activity.h"
 
+class Bitmap;
+
 /**
  * Full-screen TRMNL dashboard mode, launched from the home screen when the
  * device is linked. Fetches the current dashboard image, renders it in the
@@ -38,10 +40,21 @@ class TrmnlDashboardActivity final : public Activity {
   void drawCountdownDots() const;
   void clearDotsFromGrayPlane() const;
   // Paints the cached image (plus the countdown dots) into the framebuffer and
-  // pushes it to the panel, running the 4-level grayscale pipeline when the
-  // cached BMP carries more than one bit per pixel. Returns false when the
-  // cached image is missing or unreadable.
+  // pushes it to the panel, running the configured 4-level grayscale pipeline
+  // when the cached BMP carries more than one bit per pixel. Returns false when
+  // the cached image is missing or unreadable.
   bool drawCachedImage(int pageWidth, int pageHeight);
+  // Rewinds the BMP and renders one full pass of it in `mode`. False if the
+  // rewind failed, in which case the framebuffer is left untouched.
+  bool drawGrayPlane(const Bitmap& bitmap, int x, int y, int pageWidth, int pageHeight,
+                     GfxRenderer::RenderMode mode) const;
+  // Repaints the plain BW image + dots, the differential baseline the dot ticks
+  // refresh against once a grayscale pass has overwritten the framebuffer. On a
+  // read failure it leaves a blank frame and raises bwFrameStale instead.
+  void restoreBwFrame(const Bitmap& bitmap, int x, int y, int pageWidth, int pageHeight);
+  // RENDER_MODE_GRAYSCALE_OEM: absolute planes driven by the OEM 4-level
+  // waveform, with no BW base pass and no differential nudge.
+  void drawFactoryGrayscale(const Bitmap& bitmap, int x, int y, int pageWidth, int pageHeight);
 
   State state = FETCHING;
   bool usedWifi = false;  // A fetch cycle ran; silentRestart() on exit
@@ -50,7 +63,8 @@ class TrmnlDashboardActivity final : public Activity {
   // to see that the press was registered; the automatic refreshes at the end of
   // the countdown leave the current dashboard on screen instead.
   bool showFetchSplash = true;
-  bool fullRedraw = true;  // Redraw the bitmap from SD vs dots-only update
+  bool fullRedraw = true;     // Redraw the bitmap from SD vs dots-only update
+  bool bwFrameStale = false;  // BW baseline rebuild failed; force a full redraw
   // Interval between dot ticks, i.e. 1/COUNTDOWN_DOTS of the configured
   // refresh interval. Read from TRMNL_STORE at the start of each fetch cycle
   // so a mid-countdown setting change takes effect on the next fetch.

@@ -84,7 +84,12 @@ class HalDisplay {
   void copyGrayscaleMsbBuffers(const uint8_t* msbBuffer);
   void cleanupGrayscaleBuffers(const uint8_t* bwBuffer);
 
-  void displayGrayBuffer(bool turnOffScreen = false);
+  // factoryMode selects the OEM absolute 4-level waveform (all four states
+  // driven from scratch, self-cleaning) instead of the default differential
+  // waveform that nudges gray pixels off an already-displayed BW base. It
+  // expects absolute 2-bit planes — see GfxRenderer::GRAYSCALE_ABS_LSB. The
+  // driver picks its own factory LUT, so no table is passed through here.
+  void displayGrayBuffer(bool turnOffScreen = false, bool factoryMode = false);
 
   // Tiled grayscale: stream one band of a plane (lsbPlane selects LSB/MSB RAM)
   // straight to the controller; supportsStripGrayscale() gates the path. See

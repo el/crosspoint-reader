@@ -88,17 +88,39 @@ class TrmnlStore {
     return orientation == ORIENTATION_PORTRAIT || orientation == ORIENTATION_PORTRAIT_INVERTED;
   }
 
-  // How TrmnlDashboardActivity paints the cached image. Grayscale drives the
-  // panel's 4 levels, which costs three extra passes over the BMP and a slower
-  // refresh; the two single-pass modes collapse everything non-white to black,
-  // which is faster and is all a 1-bit dashboard can show anyway. Out-of-range
-  // values are rejected.
+  // How TrmnlDashboardActivity paints the cached image. The single-pass modes
+  // collapse everything non-white to black — faster, and all a 1-bit dashboard
+  // can show anyway. The grayscale modes each drive the panel's 4 levels a
+  // different way and exist to be compared on real hardware:
+  //   GRAYSCALE     differential nudge LUT, LSB=dark gray / MSB=dark+light.
+  //                 Cannot reach the LUT's lightest group, because the LSB mark
+  //                 set is a subset of the MSB one.
+  //   GRAYSCALE_ALT the same two passes with the planes exchanged, which does
+  //                 reach that group if the controller indexes it MSB-first.
+  //   GRAYSCALE_OEM absolute 2-bit planes driven by the OEM factory waveform,
+  //                 which the SDK documents for full-screen wallpapers. The
+  //                 panel reads that plane pair inverted relative to the level
+  //                 encoding (measured on hardware), so this mode complements
+  //                 both planes and _OEM_INV is the uncomplemented original.
+  // Values are append-only so a stored trmnl.json keeps its meaning; the
+  // settings popup imposes its own display order. Out-of-range is rejected.
   static constexpr uint8_t RENDER_MODE_GRAYSCALE = 0;
   static constexpr uint8_t RENDER_MODE_BW = 1;
   static constexpr uint8_t RENDER_MODE_BW_INVERTED = 2;
-  static constexpr uint8_t RENDER_MODE_OPTIONS_COUNT = 3;
+  static constexpr uint8_t RENDER_MODE_GRAYSCALE_ALT = 3;
+  static constexpr uint8_t RENDER_MODE_GRAYSCALE_OEM_INV = 4;
+  static constexpr uint8_t RENDER_MODE_GRAYSCALE_OEM = 5;
+  static constexpr uint8_t RENDER_MODE_OPTIONS_COUNT = 6;
   void setRenderMode(uint8_t value);
   uint8_t getRenderMode() const { return renderMode; }
+  bool isGrayscaleRenderMode() const {
+    return renderMode == RENDER_MODE_GRAYSCALE || renderMode == RENDER_MODE_GRAYSCALE_ALT || isFactoryRenderMode();
+  }
+  // The two absolute-plane modes, which take the OEM waveform rather than the
+  // differential nudge and so need no BW base pass.
+  bool isFactoryRenderMode() const {
+    return renderMode == RENDER_MODE_GRAYSCALE_OEM || renderMode == RENDER_MODE_GRAYSCALE_OEM_INV;
+  }
 
   // Path of the cached TRMNL image rendered by the sleep screen
   static const char* cachedImagePath();
