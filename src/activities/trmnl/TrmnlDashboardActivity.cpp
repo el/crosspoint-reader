@@ -11,6 +11,7 @@
 
 #include "MappedInputManager.h"
 #include "SilentRestart.h"
+#include "activities/settings/TrmnlSettingsActivity.h"
 #include "fontIds.h"
 #include "network/WifiAutoConnect.h"
 #include "trmnl/TrmnlClient.h"
@@ -82,6 +83,23 @@ void TrmnlDashboardActivity::startFetch() {
   requestUpdate();
 }
 
+void TrmnlDashboardActivity::openSettings() {
+  // On the way back: repaint rather than tick the dots, because the orientation
+  // and the render mode may both have changed, and restart the countdown at the
+  // (possibly new) interval. Time spent in the settings screen is not time the
+  // dashboard was on display, and a stale lastTickAt would otherwise drain the
+  // dots and fire a fetch the moment we return.
+  startActivityForResult(std::make_unique<TrmnlSettingsActivity>(renderer, mappedInput), [this](const ActivityResult&) {
+    RenderLock lock(*this);
+    consumeBackRelease = true;
+    fullRedraw = true;
+    const uint8_t intervalMinutes = TRMNL_STORE.getRefreshIntervalMinutes();
+    tickIntervalMs = (static_cast<unsigned long>(intervalMinutes) * MINUTE_MS) / COUNTDOWN_DOTS;
+    dotsRemaining = COUNTDOWN_DOTS;
+    lastTickAt = millis();
+  });
+}
+
 void TrmnlDashboardActivity::loop() {
   if (state == FETCHING) {
     // Blocking, bounded by the WiFi/HTTP timeouts; buttons are unresponsive
@@ -90,9 +108,31 @@ void TrmnlDashboardActivity::loop() {
     return;
   }
 
-  if (mappedInput.wasReleased(MappedInputManager::Button::Back) ||
-      mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+  // The settings screen closes on the Back *press*, so its release arrives here
+  // — where Back means "leave the dashboard" — and would drop straight through
+  // to the home screen. Swallow that one release. If Back is already up by the
+  // time we get here (settings was left some other way) there is nothing
+  // pending, so drop the guard rather than eat the next genuine press.
+  if (consumeBackRelease) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
+      consumeBackRelease = false;
+      return;
+    }
+    if (!mappedInput.isPressed(MappedInputManager::Button::Back)) {
+      consumeBackRelease = false;
+    }
+  }
+
+  if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     finish();
+    return;
+  }
+
+  // Confirm opens TRMNL settings rather than duplicating Back's exit: this
+  // screen has nothing else to confirm, and it saves a round trip through the
+  // home screen to change the interval, orientation or render mode.
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    openSettings();
     return;
   }
 

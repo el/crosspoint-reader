@@ -9,8 +9,9 @@ class Bitmap;
  * orientation configured in TrmnlStore, then counts down the user-configured
  * refresh interval (5 dots, bottom-left, one fifth of the interval per dot)
  * before fetching the next image. WiFi is turned off between fetches to
- * preserve battery and no button hints are drawn; the next/previous buttons
- * fetch a new image immediately, Back or Confirm exits to the home screen.
+ * preserve battery and no button hints are drawn: next/previous fetch a new
+ * image immediately, Confirm opens the TRMNL settings screen, and Back exits
+ * to the home screen.
  */
 class TrmnlDashboardActivity final : public Activity {
  public:
@@ -36,6 +37,8 @@ class TrmnlDashboardActivity final : public Activity {
   // Abandons the rest of the countdown so the next loop() iteration fetches,
   // announcing it with the fetch splash
   void startFetch();
+  // Pushes the TRMNL settings screen, restarting the countdown on the way back
+  void openSettings();
   void dotOrigin(int index, int& outX, int& outY) const;
   void drawCountdownDots() const;
   void clearDotsFromGrayPlane() const;
@@ -63,8 +66,9 @@ class TrmnlDashboardActivity final : public Activity {
   // to see that the press was registered; the automatic refreshes at the end of
   // the countdown leave the current dashboard on screen instead.
   bool showFetchSplash = true;
-  bool fullRedraw = true;     // Redraw the bitmap from SD vs dots-only update
-  bool bwFrameStale = false;  // BW baseline rebuild failed; force a full redraw
+  bool fullRedraw = true;           // Redraw the bitmap from SD vs dots-only update
+  bool bwFrameStale = false;        // BW baseline rebuild failed; force a full redraw
+  bool consumeBackRelease = false;  // Swallow the Back release the settings screen left behind
   // Interval between dot ticks, i.e. 1/COUNTDOWN_DOTS of the configured
   // refresh interval. Read from TRMNL_STORE at the start of each fetch cycle
   // so a mid-countdown setting change takes effect on the next fetch.
