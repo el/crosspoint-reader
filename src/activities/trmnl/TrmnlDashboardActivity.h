@@ -5,10 +5,12 @@ class Bitmap;
 
 /**
  * Full-screen TRMNL dashboard mode, launched from the home screen when the
- * device is linked. Fetches the current dashboard image, renders it in the
- * orientation configured in TrmnlStore, then counts down the user-configured
- * refresh interval (5 dots, bottom-left, one fifth of the interval per dot)
- * before fetching the next image. WiFi is turned off between fetches to
+ * device is linked. Opens on the cached dashboard image (fetching only when
+ * there is nothing cached), renders it in the orientation configured in
+ * TrmnlStore, then counts down the user-configured refresh interval (5 dots,
+ * bottom-left, one fifth of the interval per dot) before fetching the next
+ * image. A failed fetch keeps the cached image and reports why in a short
+ * toast. WiFi is turned off between fetches to
  * preserve battery and no button hints are drawn: next/previous fetch a new
  * image immediately, Confirm opens the TRMNL settings screen, and Back exits
  * to the home screen.
@@ -30,6 +32,7 @@ class TrmnlDashboardActivity final : public Activity {
  private:
   static constexpr uint8_t COUNTDOWN_DOTS = 5;
   static constexpr unsigned long MINUTE_MS = 60000;
+  static constexpr unsigned long TOAST_DURATION_MS = 4000;
 
   enum State { FETCHING, SHOWING };
 
@@ -39,8 +42,12 @@ class TrmnlDashboardActivity final : public Activity {
   void startFetch();
   // Pushes the TRMNL settings screen, restarting the countdown on the way back
   void openSettings();
+  // Refills the dots and re-reads the configured interval
+  void startCountdown();
   void dotOrigin(int index, int& outX, int& outY) const;
   void drawCountdownDots() const;
+  void toastRect(int& outX, int& outY, int& outW, int& outH) const;
+  void drawToast();
   void clearDotsFromGrayPlane() const;
   // Paints the cached image (plus the countdown dots) into the framebuffer and
   // pushes it to the panel, running the configured 4-level grayscale pipeline
@@ -76,4 +83,14 @@ class TrmnlDashboardActivity final : public Activity {
   uint8_t dotsRemaining = COUNTDOWN_DOTS;
   uint8_t renderedDots = 0xFF;  // Last dot count painted; skips no-op refreshes
   unsigned long lastTickAt = 0;
+  // Failure toast. The text is static storage (tr() / TrmnlClient::errorString),
+  // so the pointer is safe to hold; null means no toast pending or showing.
+  const char* toastMessage = nullptr;
+  bool toastShown = false;    // Already on the panel, so the timer is running
+  bool toastExpired = false;  // Due to be lifted on the next render
+  unsigned long toastShownAt = 0;
+  // ~3KB snapshot of the pixels the toast covers, held only while it is up, so
+  // lifting it is a fast differential refresh instead of a whole repaint. Null
+  // when the allocation failed — the expiry path then falls back to a repaint.
+  std::unique_ptr<uint8_t[]> toastBackup;
 };

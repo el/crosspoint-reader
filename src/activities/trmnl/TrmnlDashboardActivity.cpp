@@ -5,6 +5,7 @@
 #include <GfxRenderer.h>
 #include <HalStorage.h>
 #include <I18n.h>
+#include <Memory.h>
 #include <WiFi.h>
 
 #include <algorithm>
@@ -25,12 +26,35 @@ constexpr uint32_t WIFI_TIMEOUT_MS = 15000;
 constexpr int DOT_SIZE = 8;
 constexpr int DOT_GAP = 6;
 constexpr int DOT_MARGIN = 6;
+
+// Failure toast, sitting directly above the dot row
+constexpr int TOAST_PADDING = 8;
+constexpr int TOAST_RADIUS = 4;
 }  // namespace
 
 void TrmnlDashboardActivity::onEnter() {
   Activity::onEnter();
-  // Paint the fetch splash; the first loop() iteration starts the fetch
+  if (Storage.exists(TrmnlStore::cachedImagePath())) {
+    // Show the dashboard we already have rather than making the user wait out a
+    // WiFi connect and a TLS round trip on every open; the countdown refreshes
+    // it soon enough, and next/previous forces it immediately.
+    state = SHOWING;
+    showFetchSplash = false;
+    fullRedraw = true;
+    startCountdown();
+  }
+  // Otherwise state stays FETCHING: the splash paints and the first loop()
+  // iteration fetches.
   requestUpdate();
+}
+
+void TrmnlDashboardActivity::startCountdown() {
+  // Re-read the interval every time so a change made on the settings screen
+  // takes effect from the next countdown onwards
+  const uint8_t intervalMinutes = TRMNL_STORE.getRefreshIntervalMinutes();
+  tickIntervalMs = (static_cast<unsigned long>(intervalMinutes) * MINUTE_MS) / COUNTDOWN_DOTS;
+  dotsRemaining = COUNTDOWN_DOTS;
+  lastTickAt = millis();
 }
 
 void TrmnlDashboardActivity::onExit() {
@@ -45,29 +69,33 @@ void TrmnlDashboardActivity::onExit() {
 
 void TrmnlDashboardActivity::fetchImage() {
   usedWifi = true;
+  // Distinguish the two failures the user can act on: an unreachable network is
+  // a WiFi problem, anything after that is a TRMNL one.
+  const char* failure = nullptr;
   if (WifiAutoConnect::tryConnectLastNetwork(WIFI_TIMEOUT_MS)) {
     const auto result = TrmnlClient::fetchImageToCache();
     if (result != TrmnlClient::OK) {
       LOG_ERR("TRM", "Dashboard fetch failed (%d), keeping cached image", static_cast<int>(result));
+      failure = TrmnlClient::errorString(result);
     }
     // Radio off between refreshes to preserve battery
     WiFi.disconnect(true);
     WiFi.mode(WIFI_OFF);
   } else {
     LOG_ERR("TRM", "Dashboard fetch skipped: no WiFi connection");
+    failure = tr(STR_WIFI_CONN_FAILED);
   }
 
   {
     RenderLock lock(*this);
     state = SHOWING;
-    // Re-read the setting every cycle so a change made mid-countdown (from
-    // the TRMNL settings screen) takes effect starting next fetch
-    const uint8_t intervalMinutes = TRMNL_STORE.getRefreshIntervalMinutes();
-    tickIntervalMs = (static_cast<unsigned long>(intervalMinutes) * MINUTE_MS) / COUNTDOWN_DOTS;
-    dotsRemaining = COUNTDOWN_DOTS;
+    startCountdown();
     fullRedraw = true;
+    // tr() and errorString() both return static storage, so holding the pointer
+    // is safe for the life of the toast.
+    toastMessage = failure;
+    toastShown = false;
   }
-  lastTickAt = millis();
   requestUpdate();
 }
 
@@ -93,10 +121,7 @@ void TrmnlDashboardActivity::openSettings() {
     RenderLock lock(*this);
     consumeBackRelease = true;
     fullRedraw = true;
-    const uint8_t intervalMinutes = TRMNL_STORE.getRefreshIntervalMinutes();
-    tickIntervalMs = (static_cast<unsigned long>(intervalMinutes) * MINUTE_MS) / COUNTDOWN_DOTS;
-    dotsRemaining = COUNTDOWN_DOTS;
-    lastTickAt = millis();
+    startCountdown();
   });
 }
 
@@ -145,6 +170,20 @@ void TrmnlDashboardActivity::loop() {
     return;
   }
 
+  // Toast expiry. Timed from when it actually reached the panel, not from when
+  // the fetch failed — the redraw in between takes a second or two.
+  if (toastShown && millis() - toastShownAt >= TOAST_DURATION_MS) {
+    {
+      RenderLock lock(*this);
+      toastExpired = true;
+      // Without a snapshot of what it covered, repainting the image is the only
+      // way to clear it
+      if (!toastBackup) fullRedraw = true;
+    }
+    requestUpdate();
+    return;
+  }
+
   if (millis() - lastTickAt >= tickIntervalMs) {
     lastTickAt += tickIntervalMs;
     {
@@ -178,6 +217,39 @@ void TrmnlDashboardActivity::drawCountdownDots() const {
       renderer.fillRoundedRect(x + 2, y + 2, DOT_SIZE - 4, DOT_SIZE - 4, (DOT_SIZE - 4) / 2, Color::Black);
     }
   }
+}
+
+void TrmnlDashboardActivity::toastRect(int& outX, int& outY, int& outW, int& outH) const {
+  const int screenWidth = renderer.getScreenWidth();
+  outW = std::min(renderer.getTextWidth(UI_10_FONT_ID, toastMessage) + 2 * TOAST_PADDING, screenWidth - 2 * DOT_MARGIN);
+  outH = renderer.getLineHeight(UI_10_FONT_ID) + 2 * TOAST_PADDING;
+  outX = (screenWidth - outW) / 2;
+  // Directly above the dot row, so the two overlays never collide even in the
+  // portrait orientations where the screen is only 480 wide
+  outY = renderer.getScreenHeight() - DOT_MARGIN - DOT_SIZE - DOT_GAP - outH;
+}
+
+void TrmnlDashboardActivity::drawToast() {
+  int x, y, w, h;
+  toastRect(x, y, w, h);
+
+  // Snapshot what the toast covers so lifting it costs one fast refresh rather
+  // than a whole repaint — which in the grayscale modes means re-reading the
+  // BMP three or four more times. The region is byte-aligned in panel memory
+  // and the rect rotates with the orientation, so budget for either mapping;
+  // readFramebufferRegion returns 0 rather than overrunning if this is short.
+  const size_t capacity = std::max((static_cast<size_t>(w) / 8 + 3) * h, (static_cast<size_t>(h) / 8 + 3) * w);
+  toastBackup = makeUniqueNoThrow<uint8_t[]>(capacity);
+  if (!toastBackup) {
+    LOG_ERR("TRM", "OOM: %u bytes for toast backdrop", static_cast<unsigned>(capacity));
+  } else if (renderer.readFramebufferRegion(x, y, w, h, toastBackup.get(), capacity) == 0) {
+    // Offscreen or larger than budgeted; expiry falls back to a full redraw
+    toastBackup.reset();
+  }
+
+  renderer.fillRoundedRect(x, y, w, h, TOAST_RADIUS, Color::White);
+  renderer.drawRoundedRect(x, y, w, h, 1, TOAST_RADIUS, true);
+  renderer.drawCenteredText(UI_10_FONT_ID, y + TOAST_PADDING, toastMessage);
 }
 
 void TrmnlDashboardActivity::clearDotsFromGrayPlane() const {
@@ -397,12 +469,38 @@ void TrmnlDashboardActivity::render(RenderLock&&) {
     fullRedraw = bwFrameStale;
     bwFrameStale = false;
     renderedDots = dotsRemaining;
+  } else if (toastExpired && toastBackup) {
+    // Paint the saved pixels back over the toast. displayBuffer() diffs the
+    // whole framebuffer, so a dot tick that came due meanwhile rides along.
+    int x, y, w, h;
+    toastRect(x, y, w, h);
+    renderer.writeFramebufferRegion(x, y, w, h, toastBackup.get());
+    drawCountdownDots();
+    renderer.displayBuffer();
+    renderedDots = dotsRemaining;
   } else if (renderedDots != dotsRemaining) {
     // Dot tick: only the dot pixels change, so the fast differential
     // refresh updates them without disturbing the rest of the panel
     drawCountdownDots();
     renderer.displayBuffer();
     renderedDots = dotsRemaining;
+  }
+
+  if (toastExpired) {
+    // Either restored above or repainted by the fullRedraw branch
+    toastBackup.reset();
+    toastMessage = nullptr;
+    toastShown = false;
+    toastExpired = false;
+  } else if (toastMessage && !toastShown) {
+    // The toast overlays whatever was just painted and goes out on its own fast
+    // differential refresh, the same way a dot tick does. Drawing it into the
+    // image pass instead would save this refresh, but it would then have to be
+    // punched out of both gray planes.
+    drawToast();
+    renderer.displayBuffer();
+    toastShown = true;
+    toastShownAt = millis();
   }
 
   // Parent activities render in portrait; don't leak the dashboard orientation
