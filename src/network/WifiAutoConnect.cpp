@@ -19,7 +19,7 @@ bool tryConnectLastNetwork(const uint32_t timeoutMs) {
     LOG_DBG("WIFI", "Auto-connect: no last network");
     return false;
   }
-  const auto* cred = WIFI_STORE.findCredential(lastSsid);
+  const auto cred = WIFI_STORE.findCredential(lastSsid);
   if (!cred) {
     LOG_DBG("WIFI", "Auto-connect: no saved credential for %s", lastSsid.c_str());
     return false;
