@@ -11,12 +11,13 @@
 #include "trmnl/TrmnlClient.h"
 #include "trmnl/TrmnlStore.h"
 
+namespace fui = freeink::ui;
+
 namespace {
-constexpr int MENU_ITEMS = 7;
-const StrId menuNames[MENU_ITEMS] = {StrId::STR_TRMNL_SERVER_URL,       StrId::STR_TRMNL_MAC_ID,
-                                     StrId::STR_TRMNL_LINK_DEVICE,      StrId::STR_TRMNL_FETCH_NOW,
-                                     StrId::STR_TRMNL_REFRESH_INTERVAL, StrId::STR_TRMNL_ORIENTATION,
-                                     StrId::STR_TRMNL_RENDER_MODE};
+const StrId menuNames[TrmnlSettingsActivity::MENU_ITEMS] = {
+    StrId::STR_TRMNL_SERVER_URL, StrId::STR_TRMNL_MAC_ID,           StrId::STR_TRMNL_LINK_DEVICE,
+    StrId::STR_TRMNL_FETCH_NOW,  StrId::STR_TRMNL_REFRESH_INTERVAL, StrId::STR_TRMNL_ORIENTATION,
+    StrId::STR_TRMNL_RENDER_MODE};
 
 // Dashboard mode countdown length; kept in sync with TrmnlStore::REFRESH_INTERVAL_OPTIONS
 const StrId refreshIntervalLabels[TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT] = {
@@ -56,42 +57,34 @@ int refreshIntervalIndex() {
 }
 }  // namespace
 
-void TrmnlSettingsActivity::onEnter() {
-  Activity::onEnter();
+TrmnlSettingsActivity::TrmnlSettingsActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
+    : UiListActivity("TrmnlSettings", renderer, mappedInput) {
+  // Labels never change (unlike the values, which track live TRMNL_STORE
+  // state), so they're set once here rather than every buildScreen() call.
+  for (int i = 0; i < MENU_ITEMS; i++) {
+    rowItems_[i].label = I18N.get(menuNames[i]);
+    rowItems_[i].actionValue = static_cast<int16_t>(i);
+  }
+}
 
-  selectedIndex = 0;
+const char* TrmnlSettingsActivity::headerTitle() const { return tr(STR_TRMNL); }
+
+bool TrmnlSettingsActivity::handleCustomInput() {
+  return optionPopup.handleInput(mappedInput, [this] { requestUpdate(); });
+}
+
+void TrmnlSettingsActivity::activateIndex(const int index) {
+  if (optionPopup.isActive()) return;
+  nav.selected = index;
+  // Activation opens a popup/sub-activity or repaints a new value; a lingering
+  // flash would gray an unrelated row.
+  app.clearTapFlash();
+  handleSelection();
   requestUpdate();
 }
 
-void TrmnlSettingsActivity::onExit() { Activity::onExit(); }
-
-void TrmnlSettingsActivity::loop() {
-  if (optionPopup.handleInput(mappedInput, [this] { requestUpdate(); })) return;
-
-  if (mappedInput.wasPressed(MappedInputManager::Button::Back)) {
-    finish();
-    return;
-  }
-
-  if (mappedInput.wasPressed(MappedInputManager::Button::Confirm)) {
-    handleSelection();
-    return;
-  }
-
-  // Handle navigation
-  buttonNavigator.onNext([this] {
-    selectedIndex = (selectedIndex + 1) % MENU_ITEMS;
-    requestUpdate();
-  });
-
-  buttonNavigator.onPrevious([this] {
-    selectedIndex = (selectedIndex + MENU_ITEMS - 1) % MENU_ITEMS;
-    requestUpdate();
-  });
-}
-
 void TrmnlSettingsActivity::handleSelection() {
-  if (selectedIndex == 0) {
+  if (nav.selected == 0) {
     // Server URL - prefill with https:// if empty to save typing
     const std::string currentUrl = TRMNL_STORE.getServerUrl();
     const std::string prefillUrl = currentUrl.empty() ? "https://" : currentUrl;
@@ -106,7 +99,7 @@ void TrmnlSettingsActivity::handleSelection() {
                                TRMNL_STORE.saveToFile();
                              }
                            });
-  } else if (selectedIndex == 1) {
+  } else if (nav.selected == 1) {
     // Custom MAC ID override; empty keeps the hardware MAC. The list row
     // always shows the effective MAC (which is what gets registered at TRMNL)
     startActivityForResult(std::make_unique<KeyboardEntryActivity>(renderer, mappedInput, tr(STR_TRMNL_MAC_ID),
@@ -119,12 +112,12 @@ void TrmnlSettingsActivity::handleSelection() {
                                }
                              }
                            });
-  } else if (selectedIndex == 2) {
+  } else if (nav.selected == 2) {
     // Link device (auto-provision via /api/setup)
     startActivityForResult(
         std::make_unique<TrmnlActionActivity>(renderer, mappedInput, TrmnlActionActivity::Mode::LINK),
         [this](const ActivityResult&) { requestUpdate(); });
-  } else if (selectedIndex == 3) {
+  } else if (nav.selected == 3) {
     // Fetch image now
     if (!TRMNL_STORE.isLinked()) {
       // Can't fetch without an API key
@@ -133,15 +126,14 @@ void TrmnlSettingsActivity::handleSelection() {
     startActivityForResult(
         std::make_unique<TrmnlActionActivity>(renderer, mappedInput, TrmnlActionActivity::Mode::FETCH),
         [this](const ActivityResult&) { requestUpdate(); });
-  } else if (selectedIndex == 4) {
+  } else if (nav.selected == 4) {
     // Dashboard mode refresh interval
     optionPopup.show(StrId::STR_TRMNL_REFRESH_INTERVAL, refreshIntervalLabels,
                      TrmnlStore::REFRESH_INTERVAL_OPTIONS_COUNT, refreshIntervalIndex(), [](int idx) {
                        TRMNL_STORE.setRefreshIntervalMinutes(TrmnlStore::REFRESH_INTERVAL_OPTIONS[idx]);
                        TRMNL_STORE.saveToFile();
                      });
-    requestUpdate();
-  } else if (selectedIndex == 5) {
+  } else if (nav.selected == 5) {
     // Dashboard/sleep-screen orientation. Also decides the image size asked of
     // the TRMNL server, so the next fetch picks the new aspect ratio up.
     optionPopup.show(StrId::STR_TRMNL_ORIENTATION, orientationLabels, TrmnlStore::ORIENTATION_OPTIONS_COUNT,
@@ -149,8 +141,7 @@ void TrmnlSettingsActivity::handleSelection() {
                        TRMNL_STORE.setOrientation(static_cast<uint8_t>(idx));
                        TRMNL_STORE.saveToFile();
                      });
-    requestUpdate();
-  } else if (selectedIndex == 6) {
+  } else if (nav.selected == 6) {
     // How the dashboard paints the cached image. Scoped to dashboard mode: the
     // TRMNL sleep screen goes through the shared cover renderer, which already
     // has its own filter setting (SETTINGS.sleepScreenCoverFilter).
@@ -159,55 +150,62 @@ void TrmnlSettingsActivity::handleSelection() {
                        TRMNL_STORE.setRenderMode(renderModeOrder[idx]);
                        TRMNL_STORE.saveToFile();
                      });
-    requestUpdate();
   }
 }
 
-void TrmnlSettingsActivity::render(RenderLock&&) {
-  if (optionPopup.processRender(renderer, mappedInput)) return;
-
-  renderer.clearScreen();
-
+void TrmnlSettingsActivity::buildScreen(UiScreen& screen) {
   const auto& metrics = UITheme::getInstance().getMetrics();
-  const auto pageWidth = renderer.getScreenWidth();
-  const auto pageHeight = renderer.getScreenHeight();
+  // Content below the GUI.drawHeader band, above the button hints.
+  screen.setContentMargin(fui::Insets{static_cast<int16_t>(metrics.topPadding + metrics.headerHeight), 0,
+                                      static_cast<int16_t>(metrics.buttonHintsHeight), 0});
+  screen.spacer(static_cast<int16_t>(metrics.verticalSpacing));
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_TRMNL));
+  // rowItems_'s labels/actionValue were set once in the constructor; only the
+  // live value text needs refreshing here, by assigning into the existing
+  // rowValues_ strings (no array growth) rather than building a new
+  // items/values vector on every render.
+  for (int i = 0; i < MENU_ITEMS; i++) {
+    if (i == 0) {
+      const auto serverUrl = TRMNL_STORE.getServerUrl();
+      rowValues_[i] = serverUrl.empty() ? tr(STR_DEFAULT_VALUE) : serverUrl;
+    } else if (i == 1) {
+      rowValues_[i] = TrmnlClient::macAddress();
+    } else if (i == 2) {
+      if (!TRMNL_STORE.isLinked()) {
+        rowValues_[i] = tr(STR_TRMNL_NOT_LINKED);
+      } else {
+        const auto friendlyId = TRMNL_STORE.getFriendlyId();
+        rowValues_[i] = friendlyId.empty() ? tr(STR_TRMNL_LINKED) : friendlyId;
+      }
+    } else if (i == 3) {
+      rowValues_[i] = TRMNL_STORE.isLinked() ? "" : std::string("[") + tr(STR_SET_CREDENTIALS_FIRST) + "]";
+    } else if (i == 4) {
+      rowValues_[i] = I18N.get(refreshIntervalLabels[refreshIntervalIndex()]);
+    } else if (i == 5) {
+      rowValues_[i] = I18N.get(orientationLabels[TRMNL_STORE.getOrientation()]);
+    } else {
+      rowValues_[i] = I18N.get(renderModeLabels[renderModeIndex()]);
+    }
+    rowItems_[i].value = rowValues_[i].empty() ? nullptr : rowValues_[i].c_str();
+  }
 
-  const int contentTop = metrics.topPadding + metrics.headerHeight + metrics.verticalSpacing;
-  const int contentHeight = pageHeight - contentTop - metrics.buttonHintsHeight - metrics.verticalSpacing * 2;
-  GUI.drawList(
-      renderer, Rect{0, contentTop, pageWidth, contentHeight}, static_cast<int>(MENU_ITEMS),
-      static_cast<int>(selectedIndex), [](int index) { return std::string(I18N.get(menuNames[index])); }, nullptr,
-      nullptr,
-      [](int index) {
-        // Draw status for each setting
-        if (index == 0) {
-          auto serverUrl = TRMNL_STORE.getServerUrl();
-          return serverUrl.empty() ? std::string(tr(STR_DEFAULT_VALUE)) : serverUrl;
-        } else if (index == 1) {
-          return TrmnlClient::macAddress();
-        } else if (index == 2) {
-          if (!TRMNL_STORE.isLinked()) {
-            return std::string(tr(STR_TRMNL_NOT_LINKED));
-          }
-          return TRMNL_STORE.getFriendlyId().empty() ? std::string(tr(STR_TRMNL_LINKED)) : TRMNL_STORE.getFriendlyId();
-        } else if (index == 3) {
-          return TRMNL_STORE.isLinked() ? std::string("") : std::string("[") + tr(STR_SET_CREDENTIALS_FIRST) + "]";
-        } else if (index == 4) {
-          return std::string(I18N.get(refreshIntervalLabels[refreshIntervalIndex()]));
-        } else if (index == 5) {
-          return std::string(I18N.get(orientationLabels[TRMNL_STORE.getOrientation()]));
-        } else if (index == 6) {
-          return std::string(I18N.get(renderModeLabels[renderModeIndex()]));
-        }
-        return std::string(tr(STR_NOT_SET));
-      },
-      true);
+  fui::ListProps props;
+  props.items = rowItems_;
+  props.count = static_cast<uint16_t>(MENU_ITEMS);
+  props.action = ACTION_ROW;
+  props.inputMask = fui::InputTouch;  // physical buttons stay in loop()
+  props.valueInset = 8;               // air between the value and the row edge
+  // Label at the value's font size: both sides of the row read as one unit.
+  // maxLines=2 also marks the style caller-owned (see textStyleUnset).
+  props.labelText = screen.theme().smallText;
+  props.labelText.maxLines = 2;
+  syncListViewport(screen, props);
+  screen.list(props);
+}
 
-  // Draw help text at bottom
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
-  GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-
-  renderer.displayBuffer();
+void TrmnlSettingsActivity::render(RenderLock&& lock) {
+  // The popup owns the screen while it is up; the list underneath keeps its
+  // last painted frame.
+  if (optionPopup.processRender(renderer, mappedInput)) return;
+  UiListActivity::render(std::move(lock));
 }
