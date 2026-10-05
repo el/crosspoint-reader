@@ -188,7 +188,7 @@ TrmnlClient::Result TrmnlClient::fetchImageToCache() {
   HttpDownloader::Headers imageHeaders;
   imageHeaders.emplace_back("ID", macAddress());
   imageHeaders.emplace_back("Access-Token", TRMNL_STORE.getApiKey());
-  if (HttpDownloader::downloadToFile(imageUrl, TRMNL_TMP_DOWNLOAD, nullptr, nullptr, "", "", imageHeaders,
+  if (HttpDownloader::downloadToFile(imageUrl, TRMNL_TMP_DOWNLOAD, nullptr, nullptr, "", "", imageHeaders, false,
                                      IMAGE_TIMEOUT_MS) != HttpDownloader::OK) {
     LOG_ERR("TRM", "Image download failed");
     return IMAGE_ERROR;
